@@ -133,6 +133,8 @@ jobs:
           workspaces: rust-workspace -> target
 
       - name: Run tests for changed crates only
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           bash scripts/changed-rust-crates.sh
 

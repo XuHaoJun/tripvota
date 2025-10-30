@@ -6,19 +6,31 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
-# Determine base ref
-BASE_REF=${BASE_REF:-}
-if [[ -z "$BASE_REF" ]]; then
-  if git show-ref --verify --quiet refs/remotes/origin/main; then
-    BASE=origin/main
+# Determine base ref (priority: CLI arg > BASE_REF env > GITHUB_BASE_REF env > origin default > main/master)
+CLI_BASE_REF=${1:-}
+BASE_CANDIDATE=${CLI_BASE_REF:-${BASE_REF:-${GITHUB_BASE_REF:-}}}
+
+if [[ -n "$BASE_CANDIDATE" ]]; then
+  if git show-ref --verify --quiet "refs/remotes/origin/${BASE_CANDIDATE}"; then
+    BASE="origin/${BASE_CANDIDATE}"
   else
-    BASE=origin/master
+    BASE="$BASE_CANDIDATE"
   fi
 else
-  if git show-ref --verify --quiet "refs/remotes/origin/${BASE_REF}"; then
-    BASE="origin/${BASE_REF}"
-  else
-    BASE=$BASE_REF
+  # Try origin/HEAD to detect default branch
+  if git show-ref --verify --quiet refs/remotes/origin/HEAD; then
+    DEFAULT_REMOTE_REF=$(git symbolic-ref -q --short refs/remotes/origin/HEAD || true)
+    if [[ -n "$DEFAULT_REMOTE_REF" ]]; then
+      BASE="$DEFAULT_REMOTE_REF" # already like origin/main
+    fi
+  fi
+  # Fallbacks
+  if [[ -z "${BASE:-}" ]]; then
+    if git show-ref --verify --quiet refs/remotes/origin/main; then
+      BASE=origin/main
+    else
+      BASE=origin/master
+    fi
   fi
 fi
 
@@ -64,9 +76,15 @@ for line in "${crate_lines[@]}"; do
 done
 
 declare -A changed_pkgs
+workspace_prefix="$(basename "$PWD")/"
+
 while IFS= read -r f; do
   # Skip non-file lines
   [[ -z "$f" ]] && continue
+  # Normalize to paths relative to rust-workspace (Git may output repo-root-relative paths)
+  if [[ "$f" == "$workspace_prefix"* ]]; then
+    f="${f#"$workspace_prefix"}"
+  fi
   for dir in "${!dir_to_pkg[@]}"; do
     if [[ "$f" == "$dir"/* ]] || [[ "$f" == "$dir"/Cargo.toml ]]; then
       changed_pkgs["${dir_to_pkg[$dir]}"]=1
