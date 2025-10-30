@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ts_lint:
+    name: TypeScript Lint (all)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: typescript-workspace
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (workspace-wide)
+        run: pnpm turbo lint
+
+  ts_test_changed:
+    name: TypeScript Test (changed only)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: typescript-workspace
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests only for changed packages since base branch
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
+        run: |
+          # Fallback to master if main doesn't exist
+          if git show-ref --verify --quiet refs/remotes/origin/$BASE_REF; then
+            BASE=origin/$BASE_REF
+          elif git show-ref --verify --quiet refs/remotes/origin/main; then
+            BASE=origin/main
+          else
+            BASE=origin/master
+          fi
+          # If no test scripts exist, this will be a no-op; Turbo will skip
+          pnpm turbo run test --filter="...[${BASE}]"
+
+  rust_lint:
+    name: Rust Lint (all)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust-workspace
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cargo cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: rust-workspace -> target
+
+      - name: rustfmt (check)
+        run: cargo fmt --all -- --check
+
+      - name: clippy (deny warnings)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+  rust_test_changed:
+    name: Rust Test (changed only)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: rust-workspace -> target
+
+      - name: Run tests for changed crates only
+        run: |
+          bash scripts/changed-rust-crates.sh
+
+
