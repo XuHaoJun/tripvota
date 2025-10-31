@@ -1,0 +1,19 @@
+{
+  "name": "@workspace/proto-gen",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "generate": "buf generate"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "@bufbuild/buf": "^1.56.0",
+    "@bufbuild/protobuf": "^2.6.3",
+    "@bufbuild/protoc-gen-es": "^2.6.3"
+  }
+}

@@ -4,3 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow = "1.0.95"
+async-stream = "0.3.6"
+axum = "0.8"
+axum-connect = "0.5.3"
+axum-extra = "0.10.0"
+prost = "0.13"
+tokio = { version = "1.48.0", features = ["full"] }
+thiserror = "2.0.11"
+tower-http = { version = "0.6.2", features = ["cors"] }
+
+[build-dependencies]
+axum-connect-build = "0.5.3"

@@ -12,7 +12,6 @@
 - [axum](https://github.com/tokio-rs/axum)
 - [connectrpc](https://connectrpc.com/): protocol
 - [atlas](https://github.com/ariga/atlas): Manage your database schema as code
-- [socket.io](https://socket.io/)
 - [postgresql](https://www.postgresql.org/)
 - [rabbitmq](https://www.rabbitmq.com/)
 - [redis](https://redis.io/)

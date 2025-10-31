@@ -1,0 +1,3 @@
+[submodule "learn-projects/connectrpc-es-examples"]
+	path = learn-projects/connectrpc-es-examples
+	url = git@github.com:connectrpc/examples-es.git
