@@ -6,7 +6,7 @@ inputs:
 plugins:
   # This will invoke protoc-gen-es and write output to src/gen
   - local: protoc-gen-es
-    out: src/gen
+    out: src
     # Also generate any imported dependencies
     include_imports: true
     # Add more plugin options here

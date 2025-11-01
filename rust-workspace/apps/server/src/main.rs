@@ -68,12 +68,9 @@ async fn say_hello_unary(request: HelloRequest) -> Result<HelloResponse, Error> 
 /// You can however return a stream of anything that converts `RpcIntoResponse`, just like the
 /// unary handlers. Again, very flexible. In this case I'm using the amazing `async-stream` crate
 /// to make the code nice and readable.
-async fn stream_three_reponses(
-    request: HelloRequest,
-) -> impl Stream<Item = HelloResponse> {
+async fn stream_three_reponses(request: HelloRequest) -> impl Stream<Item = HelloResponse> {
     let name = request.name.as_deref().unwrap_or("unnamed").to_string();
-    stream! {
-        yield HelloResponse { message: "Hello".to_string() };
+    stream! { yield HelloResponse { message: "Hello".to_string() };
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         yield HelloResponse { message: name.clone() };
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;

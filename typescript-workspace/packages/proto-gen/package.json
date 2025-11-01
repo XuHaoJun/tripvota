@@ -11,6 +11,7 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@workspace/typescript-config": "workspace:*",
     "typescript": "^5.9.2",
     "@bufbuild/buf": "^1.56.0",
     "@bufbuild/protobuf": "^2.6.3",
