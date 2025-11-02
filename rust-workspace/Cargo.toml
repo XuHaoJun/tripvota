@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["apps/server", "packages/repository"]
+members = ["apps/server", "packages/entity", "packages/migration"]
