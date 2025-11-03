@@ -52,7 +52,7 @@ jobs:
   ts_test_changed:
     name: TypeScript Test (changed only)
     runs-on: ubuntu-latest
-    if: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' && github.base_ref != 'main' && github.base_ref != 'master' }}
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master')
     defaults:
       run:
         working-directory: typescript-workspace
@@ -122,7 +122,7 @@ jobs:
   rust_test_changed:
     name: Rust Test (changed only)
     runs-on: ubuntu-latest
-    if: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' && github.base_ref != 'main' && github.base_ref != 'master' }}
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
