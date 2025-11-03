@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
 import { X, Trash2 } from 'lucide-react';
+
 import { Button } from '@workspace/ui/components/button';
+
 import type { TimelineItem } from '@/lib/mock-data';
 
 interface EditModalProps {
@@ -40,7 +43,7 @@ export function EditModal({ item, onClose, onDelete, onUpdate }: EditModalProps)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg">
+      <div className="border-border bg-card w-full max-w-md rounded-lg border p-6 shadow-lg">
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">编辑行程</h3>
@@ -57,7 +60,7 @@ export function EditModal({ item, onClose, onDelete, onUpdate }: EditModalProps)
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
             />
           </div>
 
@@ -66,7 +69,7 @@ export function EditModal({ item, onClose, onDelete, onUpdate }: EditModalProps)
             <select
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
             >
               <option value="Day 1">第1天</option>
               <option value="Day 2">第2天</option>
@@ -82,7 +85,7 @@ export function EditModal({ item, onClose, onDelete, onUpdate }: EditModalProps)
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
             />
           </div>
 
@@ -104,4 +107,3 @@ export function EditModal({ item, onClose, onDelete, onUpdate }: EditModalProps)
     </div>
   );
 }
-

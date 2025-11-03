@@ -36,7 +36,8 @@ export const initialMessages: ConversationMessage[] = [
   {
     id: '3',
     role: 'ai',
-    content: '太好了！东京是个很棒的选择。我可以为你推荐一些必去的景点：\n\n1. 浅草寺 - 感受传统日本文化\n2. 东京塔 - 俯瞰城市全景\n3. 涩谷十字路口 - 体验繁忙的都市生活\n4. 新宿御苑 - 享受宁静的日式庭园\n5. 银座 - 购物和美食天堂\n\n你想先从哪个开始规划？',
+    content:
+      '太好了！东京是个很棒的选择。我可以为你推荐一些必去的景点：\n\n1. 浅草寺 - 感受传统日本文化\n2. 东京塔 - 俯瞰城市全景\n3. 涩谷十字路口 - 体验繁忙的都市生活\n4. 新宿御苑 - 享受宁静的日式庭园\n5. 银座 - 购物和美食天堂\n\n你想先从哪个开始规划？',
     timestamp: new Date(Date.now() - 3000000),
   },
 ];
@@ -44,4 +45,3 @@ export const initialMessages: ConversationMessage[] = [
 export const initialDraftItems: DraftItem[] = [];
 
 export const initialTimelineItems: TimelineItem[] = [];
-

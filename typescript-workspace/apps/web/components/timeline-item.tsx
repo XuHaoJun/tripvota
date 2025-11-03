@@ -11,13 +11,13 @@ export function TimelineItem({ item, onClick }: TimelineItemProps) {
   return (
     <div
       onClick={onClick}
-      className="cursor-pointer rounded-lg border border-border bg-card p-3 shadow-sm transition-all hover:shadow-md active:scale-[0.98] touch-none"
+      className="border-border bg-card cursor-pointer touch-none rounded-lg border p-3 shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
       style={{ WebkitTapHighlightColor: 'transparent' }}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <h4 className="text-sm font-semibold text-card-foreground">{item.title}</h4>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <h4 className="text-card-foreground text-sm font-semibold">{item.title}</h4>
+          <p className="text-muted-foreground mt-1 text-xs">
             {item.date} · {item.time}
           </p>
         </div>
@@ -25,4 +25,3 @@ export function TimelineItem({ item, onClick }: TimelineItemProps) {
     </div>
   );
 }
-

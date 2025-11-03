@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
 
@@ -54,7 +55,7 @@ export default function Home() {
         setIsTransitioning(false);
       }, 10);
     },
-    [mode, isTransitioning]
+    [mode, isTransitioning],
   );
 
   const handleAddToDraftPool = useCallback(
@@ -65,7 +66,7 @@ export default function Home() {
         transitionToMode('collection');
       }
     },
-    [draftItems.length, mode, transitionToMode]
+    [draftItems.length, mode, transitionToMode],
   );
 
   const handleRemoveFromDraftPool = useCallback((id: string) => {
@@ -87,7 +88,7 @@ export default function Home() {
         transitionToMode('arrangement');
       }
     },
-    [timelineItems.length, mode, transitionToMode]
+    [timelineItems.length, mode, transitionToMode],
   );
 
   const handleFocusInput = useCallback(() => {
@@ -131,7 +132,7 @@ export default function Home() {
   const sizes = MODE_SIZES[mode];
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-background touch-none">
+    <div className="bg-background h-screen w-screen touch-none overflow-hidden">
       <PanelGroup direction="vertical" className="h-full w-full">
         {/* Conversation Panel */}
         <Panel
@@ -140,9 +141,7 @@ export default function Home() {
           minSize={mode === 'arrangement' ? 0 : mode === 'ideation' ? 30 : 0}
           maxSize={mode === 'arrangement' ? 0 : mode === 'ideation' ? 100 : 50}
           collapsible={mode === 'arrangement'}
-          className={`transition-all duration-300 ease-in-out ${
-            mode === 'arrangement' ? 'hidden' : ''
-          }`}
+          className={`transition-all duration-300 ease-in-out ${mode === 'arrangement' ? 'hidden' : ''}`}
         >
           <ConversationPanel
             messages={messages}
@@ -160,7 +159,7 @@ export default function Home() {
           />
         </Panel>
         {mode !== 'arrangement' && (
-          <PanelResizeHandle className="h-1 bg-border hover:bg-primary/20 transition-colors touch-none" />
+          <PanelResizeHandle className="bg-border hover:bg-primary/20 h-1 touch-none transition-colors" />
         )}
 
         {/* Draft Pool Panel */}
@@ -182,7 +181,7 @@ export default function Home() {
         </Panel>
 
         {/* Timeline Panel */}
-        <PanelResizeHandle className="h-1 bg-border hover:bg-primary/20 transition-colors touch-none" />
+        <PanelResizeHandle className="bg-border hover:bg-primary/20 h-1 touch-none transition-colors" />
         <Panel
           ref={timelinePanelRef}
           defaultSize={sizes.timeline}
@@ -197,6 +196,10 @@ export default function Home() {
             onShowConversation={handleShowConversation}
             onUpdateTimeline={setTimelineItems}
             onStartArrangement={() => transitionToMode('arrangement')}
+            onJustAdded={(item) => {
+              // Optional: Add any post-add logic here (e.g., analytics, animations)
+              console.log('Item added to timeline:', item);
+            }}
           />
         </Panel>
       </PanelGroup>

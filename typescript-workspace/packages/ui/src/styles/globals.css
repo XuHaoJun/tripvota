@@ -217,4 +217,31 @@
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
   }
+
+  /* Bottom Sheet Animation */
+  @keyframes slide-in-from-bottom {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .animate-in {
+    animation-fill-mode: both;
+  }
+
+  .slide-in-from-bottom {
+    animation: slide-in-from-bottom 0.3s ease-out;
+  }
+
+  /* Drag preview enhancement */
+  [draggable="true"] {
+    -webkit-user-drag: element;
+  }
+
+  [draggable="true"]:active {
+    cursor: grabbing !important;
+  }
 }
