@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "generate": "buf generate"
   },
   "author": "",
