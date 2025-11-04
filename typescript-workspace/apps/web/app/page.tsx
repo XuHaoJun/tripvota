@@ -1,117 +1,208 @@
-import { ChevronDownIcon } from 'lucide-react';
-import Image from 'next/image';
+'use client';
 
-import { Button, buttonVariants } from '@workspace/ui/components/button';
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@workspace/ui/components/dropdown-menu';
-import { cn } from '@workspace/ui/lib/utils';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
-import { ModeToggle } from '@/components/mode-toggle';
+import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
+import type { ImperativePanelHandle } from 'react-resizable-panels';
+
+import { ConversationPanel } from '@/components/conversation-panel';
+import { DraftPool } from '@/components/draft-pool';
+import { Timeline } from '@/components/timeline';
+import type { ConversationMessage, DraftItem, TimelineItem } from '@/lib/mock-data';
+import { initialMessages, initialDraftItems, initialTimelineItems } from '@/lib/mock-data';
+
+type Mode = 'ideation' | 'collection' | 'arrangement';
+
+const MODE_SIZES: Record<Mode, { conversation: number; draftPool: number; timeline: number }> = {
+  ideation: { conversation: 70, draftPool: 20, timeline: 10 },
+  collection: { conversation: 30, draftPool: 60, timeline: 10 },
+  arrangement: { conversation: 0, draftPool: 20, timeline: 80 },
+};
 
 export default function Home() {
+  const [mode, setMode] = useState<Mode>('ideation');
+  const [messages, setMessages] = useState<ConversationMessage[]>(initialMessages);
+  const [draftItems, setDraftItems] = useState<DraftItem[]>(initialDraftItems);
+  const [timelineItems, setTimelineItems] = useState<TimelineItem[]>(initialTimelineItems);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const conversationPanelRef = useRef<ImperativePanelHandle>(null);
+  const draftPoolPanelRef = useRef<ImperativePanelHandle>(null);
+  const timelinePanelRef = useRef<ImperativePanelHandle>(null);
+
+  const transitionToMode = useCallback(
+    (newMode: Mode) => {
+      if (newMode === mode || isTransitioning) return;
+
+      setIsTransitioning(true);
+      setMode(newMode);
+
+      const sizes = MODE_SIZES[newMode];
+
+      // Resize panels with smooth transition
+      setTimeout(() => {
+        if (sizes.conversation === 0 && conversationPanelRef.current) {
+          conversationPanelRef.current.collapse();
+        } else {
+          // Expand if collapsed
+          if (conversationPanelRef.current?.isCollapsed()) {
+            conversationPanelRef.current.expand();
+          }
+          conversationPanelRef.current?.resize(sizes.conversation);
+        }
+        draftPoolPanelRef.current?.resize(sizes.draftPool);
+        timelinePanelRef.current?.resize(sizes.timeline);
+        setIsTransitioning(false);
+      }, 10);
+    },
+    [mode, isTransitioning],
+  );
+
+  const handleAddToDraftPool = useCallback(
+    (item: DraftItem) => {
+      setDraftItems((prev) => [...prev, item]);
+      // Auto-transition to collection mode if we have 2+ items
+      if (draftItems.length + 1 >= 2 && mode === 'ideation') {
+        transitionToMode('collection');
+      }
+    },
+    [draftItems.length, mode, transitionToMode],
+  );
+
+  const handleRemoveFromDraftPool = useCallback((id: string) => {
+    setDraftItems((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
+  const handleAddToTimeline = useCallback(
+    (item: DraftItem, time: string, date: string) => {
+      const timelineItem: TimelineItem = {
+        id: `timeline-${Date.now()}`,
+        draftId: item.id,
+        time,
+        date,
+        title: item.title,
+      };
+      setTimelineItems((prev) => [...prev, timelineItem]);
+      // Transition to arrangement mode when first item is added
+      if (timelineItems.length === 0 && mode !== 'arrangement') {
+        transitionToMode('arrangement');
+      }
+    },
+    [timelineItems.length, mode, transitionToMode],
+  );
+
+  const handleFocusInput = useCallback(() => {
+    if (mode !== 'ideation') {
+      transitionToMode('ideation');
+    }
+  }, [mode, transitionToMode]);
+
+  const handleDraftPoolScroll = useCallback(() => {
+    if (mode === 'ideation') {
+      transitionToMode('collection');
+    }
+  }, [mode, transitionToMode]);
+
+  const handleStartDrag = useCallback(() => {
+    if (mode !== 'arrangement') {
+      transitionToMode('arrangement');
+    }
+  }, [mode, transitionToMode]);
+
+  const handleShowConversation = useCallback(() => {
+    if (mode === 'arrangement') {
+      transitionToMode('collection');
+    }
+  }, [mode, transitionToMode]);
+
+  // Initialize panel sizes on mount
+  useEffect(() => {
+    const sizes = MODE_SIZES[mode];
+    setTimeout(() => {
+      if (sizes.conversation === 0 && conversationPanelRef.current) {
+        conversationPanelRef.current.collapse();
+      } else {
+        conversationPanelRef.current?.resize(sizes.conversation);
+      }
+      draftPoolPanelRef.current?.resize(sizes.draftPool);
+      timelinePanelRef.current?.resize(sizes.timeline);
+    }, 100);
+  }, []);
+
+  const sizes = MODE_SIZES[mode];
+
   return (
-    <div className="grid min-h-screen grid-rows-[20px_1fr_20px] items-center justify-items-center gap-16 p-8 pb-20 font-[family-name:var(--font-geist-sans)] sm:p-20">
-      <main className="row-start-2 flex flex-col items-center gap-8 sm:items-start">
-        <Image className="dark:invert" src="/next.svg" alt="Next.js logo" width={180} height={38} priority />
-        <ol className="list-inside list-decimal text-center font-[family-name:var(--font-geist-mono)] text-sm sm:text-left">
-          <li className="mb-2">
-            Get started by editing{' '}
-            <code className="rounded bg-black/[.05] px-1 py-0.5 font-semibold dark:bg-white/[.06]">app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <p>
-          All the buttons are from the <kbd>ui</kbd> package. The auto complete works as well.
-        </p>
-
-        <pre className="bg-foreground/10 rounded-sm border p-1.5">
-          <code>{`import { Button, buttonVariants } from '@workspace/ui/components/button';
-import { cn } from '@workspace/ui/lib/utils';`}</code>
-        </pre>
-
-        <ModeToggle />
-
-        <Button size={'sm'}>Click me</Button>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size={'sm'}>
-              Dropdown <ChevronDownIcon />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem>Item 1</DropdownMenuItem>
-            <DropdownMenuItem>Item 2</DropdownMenuItem>
-            <DropdownMenuCheckboxItem checked>Item 3</DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem>Item 3</DropdownMenuCheckboxItem>
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>Item 3</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuItem>Item 3.1</DropdownMenuItem>
-                <DropdownMenuItem>Item 3.2</DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <div className="flex flex-col items-center gap-4 sm:flex-row">
-          <a
-            className={cn(buttonVariants({ size: 'lg' }), 'rounded-full')}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image className="dark:invert" src="/vercel.svg" alt="Vercel logomark" width={20} height={20} />
-            Deploy now
-          </a>
-          <a
-            className={cn(buttonVariants({ size: 'lg', variant: 'outline' }), 'rounded-full')}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex flex-wrap items-center justify-center gap-6">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+    <div className="bg-background h-screen w-screen touch-none overflow-hidden">
+      <PanelGroup direction="vertical" className="h-full w-full">
+        {/* Conversation Panel */}
+        <Panel
+          ref={conversationPanelRef}
+          defaultSize={sizes.conversation}
+          minSize={mode === 'arrangement' ? 0 : mode === 'ideation' ? 30 : 0}
+          maxSize={mode === 'arrangement' ? 0 : mode === 'ideation' ? 100 : 50}
+          collapsible={mode === 'arrangement'}
+          className={`transition-all duration-300 ease-in-out ${mode === 'arrangement' ? 'hidden' : ''}`}
         >
-          <Image aria-hidden src="/file.svg" alt="File icon" width={16} height={16} />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          <ConversationPanel
+            messages={messages}
+            onAddMessage={(content) => {
+              const newMessage: ConversationMessage = {
+                id: `msg-${Date.now()}`,
+                role: 'user',
+                content,
+                timestamp: new Date(),
+              };
+              setMessages((prev) => [...prev, newMessage]);
+            }}
+            onAddToDraftPool={handleAddToDraftPool}
+            onFocusInput={handleFocusInput}
+          />
+        </Panel>
+        {mode !== 'arrangement' && (
+          <PanelResizeHandle className="bg-border hover:bg-primary/20 h-1 touch-none transition-colors" />
+        )}
+
+        {/* Draft Pool Panel */}
+        <Panel
+          ref={draftPoolPanelRef}
+          defaultSize={sizes.draftPool}
+          minSize={10}
+          maxSize={mode === 'collection' ? 80 : 40}
+          className="transition-all duration-300 ease-in-out"
         >
-          <Image aria-hidden src="/window.svg" alt="Window icon" width={16} height={16} />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          <DraftPool
+            items={draftItems}
+            onRemove={handleRemoveFromDraftPool}
+            onScroll={handleDraftPoolScroll}
+            onStartDrag={handleStartDrag}
+            onAddToTimeline={handleAddToTimeline}
+            mode={mode}
+          />
+        </Panel>
+
+        {/* Timeline Panel */}
+        <PanelResizeHandle className="bg-border hover:bg-primary/20 h-1 touch-none transition-colors" />
+        <Panel
+          ref={timelinePanelRef}
+          defaultSize={sizes.timeline}
+          minSize={mode === 'arrangement' ? 50 : 5}
+          maxSize={mode === 'arrangement' ? 100 : 20}
+          className="transition-all duration-300 ease-in-out"
         >
-          <Image aria-hidden src="/globe.svg" alt="Globe icon" width={16} height={16} />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <Timeline
+            items={timelineItems}
+            draftItems={draftItems}
+            mode={mode}
+            onShowConversation={handleShowConversation}
+            onUpdateTimeline={setTimelineItems}
+            onStartArrangement={() => transitionToMode('arrangement')}
+            onJustAdded={(item) => {
+              // Optional: Add any post-add logic here (e.g., analytics, animations)
+              console.log('Item added to timeline:', item);
+            }}
+          />
+        </Panel>
+      </PanelGroup>
     </div>
   );
 }

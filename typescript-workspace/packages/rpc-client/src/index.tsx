@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 
 import { TransportProvider } from '@connectrpc/connect-query';
