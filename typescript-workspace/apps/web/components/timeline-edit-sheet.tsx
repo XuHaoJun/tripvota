@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 
-import { format } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
 import { X, Clock, Calendar as CalendarIcon, AlertCircle } from 'lucide-react';
 
 import { Button } from '@workspace/ui/components/button';
@@ -55,7 +53,7 @@ export function TimelineEditSheet({ item, onClose, onUpdate, onDelete, hasConfli
 
   // Calculate end time
   const [hours, minutes] = startTime.split(':').map(Number);
-  const startMinutes = hours * 60 + minutes;
+  const startMinutes = (hours || 0) * 60 + (minutes || 0);
   const endMinutes = startMinutes + duration;
   const endHours = Math.floor(endMinutes / 60);
   const endMins = endMinutes % 60;
@@ -144,8 +142,8 @@ export function TimelineEditSheet({ item, onClose, onUpdate, onDelete, hasConfli
                     value={endTime}
                     onChange={(e) => {
                       const [newHours, newMins] = e.target.value.split(':').map(Number);
-                      const newStartMinutes = hours * 60 + minutes;
-                      const newEndMinutes = newHours * 60 + newMins;
+                      const newStartMinutes = (hours || 0) * 60 + (minutes || 0);
+                      const newEndMinutes = (newHours || 0) * 60 + (newMins || 0);
                       const newDuration = newEndMinutes - newStartMinutes;
                       if (newDuration > 0) {
                         setDuration(newDuration);

@@ -10,6 +10,16 @@ import type { DraftItem } from '@/lib/mock-data';
 
 type Mode = 'ideation' | 'collection' | 'arrangement';
 
+// Extend Window interface for drag data
+declare global {
+  interface Window {
+    __draftDragData?: string;
+    __mobileDropData?: { start: Date; end: Date };
+    __calendarCurrentView?: 'month' | 'week' | 'day' | 'agenda';
+    __calendarCurrentDate?: Date;
+  }
+}
+
 interface DraftCardProps {
   item: DraftItem;
   onRemove: (id: string) => void;
@@ -21,7 +31,6 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedTime, setSelectedTime] = useState('10:00');
   const [selectedDate, setSelectedDate] = useState('Day 1');
-  const [isDragging, setIsDragging] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const dragElementRef = useRef<HTMLElement | null>(null);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -46,7 +55,7 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
       };
 
       // Store drag data (same as desktop)
-      (window as any).__draftDragData = JSON.stringify(item);
+      window.__draftDragData = JSON.stringify(item);
 
       // Create drag element immediately
       if (cardRef.current) {
@@ -64,8 +73,6 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
         });
         document.body.appendChild(dragElement);
         dragElementRef.current = dragElement;
-
-        setIsDragging(true);
 
         // Add visual feedback to original
         cardRef.current.style.opacity = '0.5';
@@ -195,188 +202,191 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
   );
 
   // Helper function to calculate date/time from touch position
-  const calculateDropDate = useCallback((touchX: number, touchY: number): Date | null => {
-    // Find calendar element directly (don't use elementFromPoint as it might hit the drag element)
-    const calendarElement = document.querySelector('.rbc-calendar') as HTMLElement;
+  const calculateDropDate = useCallback(
+    (touchX: number, touchY: number): Date | null => {
+      // Find calendar element directly (don't use elementFromPoint as it might hit the drag element)
+      const calendarElement = document.querySelector('.rbc-calendar') as HTMLElement;
 
-    if (!calendarElement) return null;
+      if (!calendarElement) return null;
 
-    // Check if touch is within calendar bounds
-    const calendarRect = calendarElement.getBoundingClientRect();
-    if (
-      touchX < calendarRect.left ||
-      touchX > calendarRect.right ||
-      touchY < calendarRect.top ||
-      touchY > calendarRect.bottom
-    ) {
-      return null;
-    }
+      // Check if touch is within calendar bounds
+      const calendarRect = calendarElement.getBoundingClientRect();
+      if (
+        touchX < calendarRect.left ||
+        touchX > calendarRect.right ||
+        touchY < calendarRect.top ||
+        touchY > calendarRect.bottom
+      ) {
+        return null;
+      }
 
-    // Get current view type and date to determine how to calculate date
-    const calendarView = (window as any).__calendarCurrentView || 'week';
-    const calendarViewDate = (window as any).__calendarCurrentDate;
+      // Get current view type and date to determine how to calculate date
+      const calendarView = window.__calendarCurrentView || 'week';
+      const calendarViewDate = window.__calendarCurrentDate;
 
-    // Handle month view differently - it doesn't have time-content
-    if (calendarView === 'month') {
-      return calculateDropDateForMonthView(touchX, touchY, calendarElement, calendarViewDate);
-    }
+      // Handle month view differently - it doesn't have time-content
+      if (calendarView === 'month') {
+        return calculateDropDateForMonthView(touchX, touchY, calendarElement, calendarViewDate);
+      }
 
-    // For week/day view, find the time content area (the actual scrollable time grid)
-    // This is where the time slots are rendered
-    const timeContent = calendarElement.querySelector('.rbc-time-content') as HTMLElement;
+      // For week/day view, find the time content area (the actual scrollable time grid)
+      // This is where the time slots are rendered
+      const timeContent = calendarElement.querySelector('.rbc-time-content') as HTMLElement;
 
-    if (!timeContent) {
-      console.log('[Mobile Drag] Time content not found');
-      return null;
-    }
+      if (!timeContent) {
+        console.log('[Mobile Drag] Time content not found');
+        return null;
+      }
 
-    const gridRect = timeContent.getBoundingClientRect();
+      const gridRect = timeContent.getBoundingClientRect();
 
-    // CRITICAL: Account for scroll position! react-big-calendar calculates dates
-    // relative to the scrolled content, not the viewport
-    const scrollTop = timeContent.scrollTop;
+      // CRITICAL: Account for scroll position! react-big-calendar calculates dates
+      // relative to the scrolled content, not the viewport
+      const scrollTop = timeContent.scrollTop;
 
-    // Calculate relative position within the time grid
-    // Add scrollTop to account for scrolled content
-    const relativeY = touchY - gridRect.top + scrollTop;
-    const relativeX = touchX - gridRect.left;
+      // Calculate relative position within the time grid
+      // Add scrollTop to account for scrolled content
+      const relativeY = touchY - gridRect.top + scrollTop;
+      const relativeX = touchX - gridRect.left;
 
-    // If touch is above the time grid (in header area), return null
-    if (relativeY < 0) {
-      console.log(
-        '[Mobile Drag] Touch is above time grid, relativeY:',
+      // If touch is above the time grid (in header area), return null
+      if (relativeY < 0) {
+        console.log(
+          '[Mobile Drag] Touch is above time grid, relativeY:',
+          relativeY,
+          'gridRect.top:',
+          gridRect.top,
+          'touchY:',
+          touchY,
+        );
+        return null;
+      }
+
+      // If touch is below the time grid, clamp to bottom
+      if (relativeY > gridRect.height) {
+        console.log('[Mobile Drag] Touch is below time grid, clamping');
+        // Could clamp to 23:59, but for now return null
+        return null;
+      }
+
+      // calendarView already retrieved above
+      // Find which day column - look for day slots within the time content
+      const daySlots = calendarElement.querySelectorAll('.rbc-day-slot');
+      let dayOffset = 0;
+
+      if (calendarView === 'day') {
+        // In day view, there's only one day, so dayOffset is always 0
+        dayOffset = 0;
+      } else if (daySlots.length > 0) {
+        // In week view, find which day slot the touch is over
+        daySlots.forEach((slot, index) => {
+          const slotRect = slot.getBoundingClientRect();
+          if (touchX >= slotRect.left && touchX <= slotRect.right) {
+            dayOffset = index;
+          }
+        });
+      } else {
+        // Fallback: calculate from X position relative to time grid (week view)
+        const gridWidth = gridRect.width;
+        const dayWidth = gridWidth / 7;
+        dayOffset = Math.floor(relativeX / dayWidth);
+        // Clamp to valid range
+        dayOffset = Math.max(0, Math.min(6, dayOffset));
+      }
+
+      // Calculate time from Y position
+      // Find time slots to get accurate hour height
+      // CRITICAL: Use scrollHeight instead of height to get the full content height
+      const timeSlots = calendarElement.querySelectorAll('.rbc-time-slot');
+      let hourHeight = 60; // Default 60px per hour
+
+      if (timeSlots.length > 0) {
+        const firstSlot = timeSlots[0] as HTMLElement;
+        const slotHeight = firstSlot.offsetHeight; // Use offsetHeight, not getBoundingClientRect
+        // Each slot typically represents 30 minutes in week view
+        hourHeight = slotHeight * 2; // 2 slots per hour
+      } else {
+        // Fallback: use scrollHeight to get total content height
+        // This accounts for the full 24-hour day, not just visible portion
+        const totalContentHeight = timeContent.scrollHeight;
+        hourHeight = totalContentHeight / 24; // 24 hours in a day
+      }
+
+      // Calculate hours and minutes from Y position
+      // relativeY is now guaranteed to be >= 0
+      const totalMinutes = (relativeY / hourHeight) * 60;
+      let hours = Math.floor(totalMinutes / 60);
+      let minutes = Math.floor((totalMinutes % 60) / 15) * 15;
+
+      // Clamp hours to valid range (0-23)
+      hours = Math.max(0, Math.min(23, hours));
+
+      // Ensure minutes are non-negative
+      if (minutes < 0) {
+        minutes = 0;
+        hours = Math.max(0, hours - 1);
+      }
+
+      // calendarViewDate already retrieved above
+      if (!calendarViewDate) {
+        console.warn('Calendar current date not found, using today');
+        return null;
+      }
+
+      const viewDate = new Date(calendarViewDate);
+
+      // CRITICAL: Handle day view vs week view differently
+      let targetDate: Date;
+
+      if (calendarView === 'day') {
+        // In day view, always use the current date (dayOffset should be 0)
+        targetDate = new Date(viewDate);
+        // Set time using local time methods (not UTC) to match desktop behavior
+        targetDate.setHours(hours, minutes, 0, 0);
+      } else {
+        // In week view, calculate from week start + day offset
+        const viewDay = viewDate.getDay();
+
+        // Calculate the start of the week being displayed (Sunday = 0)
+        const weekStart = new Date(viewDate);
+        weekStart.setDate(weekStart.getDate() - viewDay);
+        weekStart.setHours(0, 0, 0, 0);
+
+        // Add the day offset to get the target day within the displayed week
+        // dayOffset is 0-6 representing Sunday-Saturday
+        targetDate = new Date(weekStart);
+        targetDate.setDate(targetDate.getDate() + dayOffset);
+        // Set time using local time methods (not UTC) to match desktop behavior
+        targetDate.setHours(hours, minutes, 0, 0);
+      }
+
+      console.log('[Mobile Drag] Calculated drop date:', {
+        calendarView: calendarView,
+        calendarViewDate: viewDate,
+        dayOffset,
         relativeY,
-        'gridRect.top:',
-        gridRect.top,
-        'touchY:',
+        scrollTop,
+        hourHeight,
+        totalMinutes: (relativeY / hourHeight) * 60,
+        hours,
+        minutes,
+        targetDate,
+        targetDateISO: targetDate.toISOString(),
+        targetDateLocal: targetDate.toString(),
+        gridRect: {
+          top: gridRect.top,
+          bottom: gridRect.bottom,
+          height: gridRect.height,
+          scrollHeight: timeContent.scrollHeight,
+        },
         touchY,
-      );
-      return null;
-    }
-
-    // If touch is below the time grid, clamp to bottom
-    if (relativeY > gridRect.height) {
-      console.log('[Mobile Drag] Touch is below time grid, clamping');
-      // Could clamp to 23:59, but for now return null
-      return null;
-    }
-
-    // calendarView already retrieved above
-    // Find which day column - look for day slots within the time content
-    const daySlots = calendarElement.querySelectorAll('.rbc-day-slot');
-    let dayOffset = 0;
-
-    if (calendarView === 'day') {
-      // In day view, there's only one day, so dayOffset is always 0
-      dayOffset = 0;
-    } else if (daySlots.length > 0) {
-      // In week view, find which day slot the touch is over
-      daySlots.forEach((slot, index) => {
-        const slotRect = slot.getBoundingClientRect();
-        if (touchX >= slotRect.left && touchX <= slotRect.right) {
-          dayOffset = index;
-        }
+        touchX,
       });
-    } else {
-      // Fallback: calculate from X position relative to time grid (week view)
-      const gridWidth = gridRect.width;
-      const dayWidth = gridWidth / 7;
-      dayOffset = Math.floor(relativeX / dayWidth);
-      // Clamp to valid range
-      dayOffset = Math.max(0, Math.min(6, dayOffset));
-    }
 
-    // Calculate time from Y position
-    // Find time slots to get accurate hour height
-    // CRITICAL: Use scrollHeight instead of height to get the full content height
-    const timeSlots = calendarElement.querySelectorAll('.rbc-time-slot');
-    let hourHeight = 60; // Default 60px per hour
-
-    if (timeSlots.length > 0) {
-      const firstSlot = timeSlots[0] as HTMLElement;
-      const slotHeight = firstSlot.offsetHeight; // Use offsetHeight, not getBoundingClientRect
-      // Each slot typically represents 30 minutes in week view
-      hourHeight = slotHeight * 2; // 2 slots per hour
-    } else {
-      // Fallback: use scrollHeight to get total content height
-      // This accounts for the full 24-hour day, not just visible portion
-      const totalContentHeight = timeContent.scrollHeight;
-      hourHeight = totalContentHeight / 24; // 24 hours in a day
-    }
-
-    // Calculate hours and minutes from Y position
-    // relativeY is now guaranteed to be >= 0
-    const totalMinutes = (relativeY / hourHeight) * 60;
-    let hours = Math.floor(totalMinutes / 60);
-    let minutes = Math.floor((totalMinutes % 60) / 15) * 15;
-
-    // Clamp hours to valid range (0-23)
-    hours = Math.max(0, Math.min(23, hours));
-
-    // Ensure minutes are non-negative
-    if (minutes < 0) {
-      minutes = 0;
-      hours = Math.max(0, hours - 1);
-    }
-
-    // calendarViewDate already retrieved above
-    if (!calendarViewDate) {
-      console.warn('Calendar current date not found, using today');
-      return null;
-    }
-
-    const viewDate = new Date(calendarViewDate);
-
-    // CRITICAL: Handle day view vs week view differently
-    let targetDate: Date;
-
-    if (calendarView === 'day') {
-      // In day view, always use the current date (dayOffset should be 0)
-      targetDate = new Date(viewDate);
-      // Set time using local time methods (not UTC) to match desktop behavior
-      targetDate.setHours(hours, minutes, 0, 0);
-    } else {
-      // In week view, calculate from week start + day offset
-      const viewDay = viewDate.getDay();
-
-      // Calculate the start of the week being displayed (Sunday = 0)
-      const weekStart = new Date(viewDate);
-      weekStart.setDate(weekStart.getDate() - viewDay);
-      weekStart.setHours(0, 0, 0, 0);
-
-      // Add the day offset to get the target day within the displayed week
-      // dayOffset is 0-6 representing Sunday-Saturday
-      targetDate = new Date(weekStart);
-      targetDate.setDate(targetDate.getDate() + dayOffset);
-      // Set time using local time methods (not UTC) to match desktop behavior
-      targetDate.setHours(hours, minutes, 0, 0);
-    }
-
-    console.log('[Mobile Drag] Calculated drop date:', {
-      calendarView: calendarView,
-      calendarViewDate: viewDate,
-      dayOffset,
-      relativeY,
-      scrollTop,
-      hourHeight,
-      totalMinutes: (relativeY / hourHeight) * 60,
-      hours,
-      minutes,
-      targetDate,
-      targetDateISO: targetDate.toISOString(),
-      targetDateLocal: targetDate.toString(),
-      gridRect: {
-        top: gridRect.top,
-        bottom: gridRect.bottom,
-        height: gridRect.height,
-        scrollHeight: timeContent.scrollHeight,
-      },
-      touchY,
-      touchX,
-    });
-
-    return targetDate;
-  }, []);
+      return targetDate;
+    },
+    [calculateDropDateForMonthView],
+  );
 
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
@@ -412,115 +422,116 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
     [calculateDropDate],
   );
 
-  const handleTouchEnd = useCallback((e: TouchEvent) => {
-    // Check if we actually started a drag
-    if (!touchStartRef.current) return;
+  const handleTouchEnd = useCallback(
+    (e: TouchEvent) => {
+      // Check if we actually started a drag
+      if (!touchStartRef.current) return;
 
-    const touch = e.changedTouches[0];
-    if (!touch) {
-      // Cleanup if no touch data
+      const touch = e.changedTouches[0];
+      if (!touch) {
+        // Cleanup if no touch data
+        if (dragElementRef.current) {
+          document.body.removeChild(dragElementRef.current);
+          dragElementRef.current = null;
+        }
+        if (cardRef.current) {
+          cardRef.current.style.opacity = '1';
+          cardRef.current.style.transform = 'scale(1)';
+        }
+        touchStartRef.current = null;
+        return;
+      }
+
+      const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
+
+      // Find calendar drop zone (look for react-big-calendar elements)
+      const calendarElement =
+        elementAtPoint?.closest('.rbc-calendar') ||
+        elementAtPoint?.closest('[class*="rbc-calendar"]') ||
+        document.querySelector('.rbc-calendar');
+
+      if (calendarElement && dragElementRef.current) {
+        // Use calculateDropDate to get the drop date/time (works for all views: month, week, day)
+        const dropDate = calculateDropDate(touch.clientX, touch.clientY);
+
+        if (dropDate) {
+          // Get default duration based on item type (same logic as desktop)
+          const dragData = window.__draftDragData;
+          let defaultDuration = 90; // Default 90 minutes
+
+          if (dragData) {
+            try {
+              const draftItem: DraftItem = typeof dragData === 'string' ? JSON.parse(dragData) : dragData;
+              const title = draftItem.title.toLowerCase();
+              if (title.includes('餐厅') || title.includes('美食') || title.includes('吃')) {
+                defaultDuration = 60; // 1 hour for restaurants
+              }
+            } catch (error) {
+              console.error('[Mobile Drag] Failed to parse drag data for duration:', error);
+            }
+          }
+
+          const dropEnd = new Date(dropDate);
+          dropEnd.setMinutes(dropEnd.getMinutes() + defaultDuration);
+
+          // Store drop data for timeline component
+          window.__mobileDropData = {
+            start: dropDate,
+            end: dropEnd,
+          };
+
+          console.log('[Mobile Drag] Dispatching drop event:', {
+            start: dropDate,
+            end: dropEnd,
+            hasDraftData: !!window.__draftDragData,
+          });
+
+          // Dispatch drop event - timeline component will handle it
+          window.dispatchEvent(
+            new CustomEvent('mobile-drag-drop', {
+              detail: {
+                start: dropDate,
+                end: dropEnd,
+              },
+            }),
+          );
+        } else {
+          console.log('[Mobile Drag] No valid drop date calculated at touch position');
+        }
+      }
+
+      // Clear preview
+      window.dispatchEvent(
+        new CustomEvent('mobile-drag-preview', {
+          detail: { date: null },
+        }),
+      );
+
+      // Cleanup
       if (dragElementRef.current) {
         document.body.removeChild(dragElementRef.current);
         dragElementRef.current = null;
       }
+
       if (cardRef.current) {
         cardRef.current.style.opacity = '1';
         cardRef.current.style.transform = 'scale(1)';
       }
-      setIsDragging(false);
+
       touchStartRef.current = null;
-      return;
-    }
 
-    const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
-
-    // Find calendar drop zone (look for react-big-calendar elements)
-    const calendarElement =
-      elementAtPoint?.closest('.rbc-calendar') ||
-      elementAtPoint?.closest('[class*="rbc-calendar"]') ||
-      document.querySelector('.rbc-calendar');
-
-    if (calendarElement && dragElementRef.current) {
-      // Use calculateDropDate to get the drop date/time (works for all views: month, week, day)
-      const dropDate = calculateDropDate(touch.clientX, touch.clientY);
-
-      if (dropDate) {
-        // Get default duration based on item type (same logic as desktop)
-        const dragData = (window as any).__draftDragData;
-        let defaultDuration = 90; // Default 90 minutes
-
-        if (dragData) {
-          try {
-            const draftItem: DraftItem = typeof dragData === 'string' ? JSON.parse(dragData) : dragData;
-            const title = draftItem.title.toLowerCase();
-            if (title.includes('餐厅') || title.includes('美食') || title.includes('吃')) {
-              defaultDuration = 60; // 1 hour for restaurants
-            }
-          } catch (error) {
-            console.error('[Mobile Drag] Failed to parse drag data for duration:', error);
-          }
+      // Clean up drag data if not dropped successfully
+      setTimeout(() => {
+        if (window.__draftDragData) {
+          delete window.__draftDragData;
         }
-
-        const dropEnd = new Date(dropDate);
-        dropEnd.setMinutes(dropEnd.getMinutes() + defaultDuration);
-
-        // Store drop data for timeline component
-        (window as any).__mobileDropData = {
-          start: dropDate,
-          end: dropEnd,
-        };
-
-        console.log('[Mobile Drag] Dispatching drop event:', {
-          start: dropDate,
-          end: dropEnd,
-          hasDraftData: !!(window as any).__draftDragData,
-        });
-
-        // Dispatch drop event - timeline component will handle it
-        window.dispatchEvent(
-          new CustomEvent('mobile-drag-drop', {
-            detail: {
-              start: dropDate,
-              end: dropEnd,
-            },
-          }),
-        );
-      } else {
-        console.log('[Mobile Drag] No valid drop date calculated at touch position');
-      }
-    }
-
-    // Clear preview
-    window.dispatchEvent(
-      new CustomEvent('mobile-drag-preview', {
-        detail: { date: null },
-      }),
-    );
-
-    // Cleanup
-    if (dragElementRef.current) {
-      document.body.removeChild(dragElementRef.current);
-      dragElementRef.current = null;
-    }
-
-    if (cardRef.current) {
-      cardRef.current.style.opacity = '1';
-      cardRef.current.style.transform = 'scale(1)';
-    }
-
-    setIsDragging(false);
-    touchStartRef.current = null;
-
-    // Clean up drag data if not dropped successfully
-    setTimeout(() => {
-      if ((window as any).__draftDragData) {
-        delete (window as any).__draftDragData;
-      }
-      if ((window as any).__mobileDropData) {
-        delete (window as any).__mobileDropData;
-      }
-    }, 100);
-  }, []);
+        if (window.__mobileDropData) {
+          delete window.__mobileDropData;
+        }
+      }, 100);
+    },
+    [calculateDropDate],
+  );
 
   // Add touch event listeners with passive: false to allow preventDefault
   useEffect(() => {
@@ -557,7 +568,7 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
         dragElementRef.current = null;
       }
     };
-  }, [mode, handleTouchStart, handleTouchMove, handleTouchEnd, calculateDropDate]);
+  }, [mode, handleTouchStart, handleTouchMove, handleTouchEnd]);
 
   return (
     <>
@@ -575,11 +586,11 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
           e.dataTransfer.setData('application/json', JSON.stringify(item));
           e.dataTransfer.effectAllowed = 'move';
           // Store in window for react-big-calendar's onDropFromOutside
-          (window as any).__draftDragData = JSON.stringify(item);
+          window.__draftDragData = JSON.stringify(item);
 
           console.log('[Desktop Drag] Stored draft data:', {
-            hasData: !!(window as any).__draftDragData,
-            calendarCurrentDate: (window as any).__calendarCurrentDate,
+            hasData: !!window.__draftDragData,
+            calendarCurrentDate: window.__calendarCurrentDate,
           });
 
           // Create custom drag image for better visual feedback
@@ -600,7 +611,7 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
           console.log('[Desktop Drag] onDragEnd:', {
             clientX: e.clientX,
             clientY: e.clientY,
-            hasDraftData: !!(window as any).__draftDragData,
+            hasDraftData: !!window.__draftDragData,
           });
 
           // Restore opacity and transform
@@ -608,9 +619,9 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
           e.currentTarget.style.transform = 'scale(1)';
           // Clean up drag data if not dropped successfully
           setTimeout(() => {
-            if ((window as any).__draftDragData) {
+            if (window.__draftDragData) {
               console.log('[Desktop Drag] Cleaning up draft data');
-              delete (window as any).__draftDragData;
+              delete window.__draftDragData;
             }
           }, 100);
         }}

@@ -127,7 +127,7 @@ export default function Home() {
       draftPoolPanelRef.current?.resize(sizes.draftPool);
       timelinePanelRef.current?.resize(sizes.timeline);
     }, 100);
-  }, []);
+  }, [mode]);
 
   const sizes = MODE_SIZES[mode];
 

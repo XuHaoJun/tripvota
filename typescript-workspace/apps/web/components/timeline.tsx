@@ -17,8 +17,18 @@ import type { TimelineItem, DraftItem } from '@/lib/mock-data';
 import { EditModal } from './edit-modal';
 import { TimelineEditSheet } from './timeline-edit-sheet';
 
+// Extend Window interface for drag data
+declare global {
+  interface Window {
+    __draftDragData?: string;
+    __mobileDropData?: { start: Date; end: Date };
+    __calendarCurrentView?: 'month' | 'week' | 'day' | 'agenda';
+    __calendarCurrentDate?: Date;
+  }
+}
+
 // Wrap Calendar with drag and drop functionality
-const DragAndDropCalendar = withDragAndDrop(Calendar);
+const DragAndDropCalendar = withDragAndDrop<CalendarEvent>(Calendar);
 
 type Mode = 'ideation' | 'collection' | 'arrangement';
 
@@ -93,7 +103,6 @@ const eventToTimelineItem = (event: CalendarEvent): TimelineItem => {
 
 export function Timeline({
   items,
-  draftItems,
   mode,
   onShowConversation,
   onUpdateTimeline,
@@ -108,8 +117,8 @@ export function Timeline({
 
   // Store current date and view in window on mount and when they change
   useEffect(() => {
-    (window as any).__calendarCurrentDate = currentDate;
-    (window as any).__calendarCurrentView = view;
+    window.__calendarCurrentDate = currentDate;
+    window.__calendarCurrentView = view as 'month' | 'week' | 'day' | 'agenda';
   }, [currentDate, view]);
 
   // Handle event selection - open bottom sheet instead of modal
@@ -143,11 +152,11 @@ export function Timeline({
     (start?: Date): CalendarEvent | null => {
       console.log('[Desktop Drag] dragFromOutsideItem called:', {
         start,
-        hasDraftData: !!(window as any).__draftDragData,
+        hasDraftData: !!window.__draftDragData,
         currentDate,
       });
 
-      const dragData = (window as any).__draftDragData;
+      const dragData = window.__draftDragData;
       if (!dragData) {
         console.log('[Desktop Drag] No draft data found');
         return null;
@@ -205,7 +214,7 @@ export function Timeline({
     // Add preview event if dragging from mobile
     // Use the SAME logic as desktop: call dragFromOutsideItem with the calculated date
     // This ensures mobile preview matches desktop preview exactly
-    if (previewDate && (window as any).__draftDragData) {
+    if (previewDate && window.__draftDragData) {
       try {
         // Use dragFromOutsideItem to create preview - same as desktop!
         const previewEvent = dragFromOutsideItem(previewDate);
@@ -260,11 +269,11 @@ export function Timeline({
         end,
         allDay,
         currentDate,
-        hasDraftData: !!(window as any).__draftDragData,
+        hasDraftData: !!window.__draftDragData,
       });
 
       // Get draft item from window data (not from dragFromOutsideItem which returns CalendarEvent)
-      const dragData = (window as any).__draftDragData;
+      const dragData = window.__draftDragData;
       if (!dragData) {
         console.log('[Desktop Drag] No draft data in handleDropFromExternal');
         return;
@@ -319,7 +328,7 @@ export function Timeline({
         onUpdateTimeline(updatedItems);
 
         // Clear drag data
-        delete (window as any).__draftDragData;
+        delete window.__draftDragData;
 
         // Auto-open bottom edit sheet after drop (Aha! Moment)
         setTimeout(() => {
@@ -330,7 +339,7 @@ export function Timeline({
         console.error('Failed to create timeline item:', error);
       }
     },
-    [items, onUpdateTimeline, snapToNearestSlot, checkConflict, getDefaultDuration, onJustAdded],
+    [items, onUpdateTimeline, snapToNearestSlot, checkConflict, getDefaultDuration, onJustAdded, currentDate],
   );
 
   // Handle event move (drag within calendar)
@@ -375,7 +384,7 @@ export function Timeline({
       setSelectedItem(null);
       setEditingItem(null);
     },
-    [onUpdateTimeline],
+    [items, onUpdateTimeline],
   );
 
   const handleUpdateItem = useCallback(
@@ -395,28 +404,28 @@ export function Timeline({
 
   // Listen for mobile drag-drop events and preview updates
   useEffect(() => {
-    const handleMobileDrop = (event: CustomEvent) => {
+    const handleMobileDrop = (event: CustomEvent<{ start: Date; end: Date }>) => {
       const { start, end } = event.detail;
       // Check if drag data exists
-      if ((window as any).__draftDragData) {
+      if (window.__draftDragData) {
         handleDropFromExternal({ start, end });
       }
       // Clear preview
       setPreviewDate(null);
     };
 
-    const handleMobilePreview = (event: CustomEvent) => {
+    const handleMobilePreview = (event: CustomEvent<{ date: Date | null }>) => {
       const { date } = event.detail;
       // Update preview date (can be null to clear preview)
       console.log('[Mobile Drag] Preview event received:', {
         date,
-        hasDraftData: !!(window as any).__draftDragData,
+        hasDraftData: !!window.__draftDragData,
         currentDate,
       });
 
       // Use the same logic as desktop: call dragFromOutsideItem with the calculated date
       // This ensures the preview uses the exact same calculation
-      if (date && (window as any).__draftDragData) {
+      if (date && window.__draftDragData) {
         const previewEvent = dragFromOutsideItemRef.current(date);
         console.log('[Mobile Drag] Preview event from dragFromOutsideItem:', previewEvent);
         // The preview event will be added to events array via previewDate state
@@ -432,7 +441,7 @@ export function Timeline({
       window.removeEventListener('mobile-drag-drop', handleMobileDrop as EventListener);
       window.removeEventListener('mobile-drag-preview', handleMobilePreview as EventListener);
     };
-  }, [handleDropFromExternal]);
+  }, [handleDropFromExternal, currentDate]);
 
   // Check if editing item has conflict
   const editingItemHasConflict = useMemo(() => {
@@ -472,14 +481,12 @@ export function Timeline({
       <div className="rbc-calendar-wrapper flex-1 overflow-hidden">
         <DragAndDropCalendar
           localizer={localizer}
-          events={events as any}
-          startAccessor={(event: any) => {
-            const e = event as CalendarEvent;
-            return e.start;
+          events={events}
+          startAccessor={(event: CalendarEvent) => {
+            return event.start;
           }}
-          endAccessor={(event: any) => {
-            const e = event as CalendarEvent;
-            return e.end;
+          endAccessor={(event: CalendarEvent) => {
+            return event.end;
           }}
           style={{ height: '100%' }}
           defaultView="week"
@@ -487,21 +494,21 @@ export function Timeline({
           onView={(newView) => {
             setView(newView);
             // Store current view in window for mobile drag calculation
-            (window as any).__calendarCurrentView = newView;
+            window.__calendarCurrentView = newView as 'month' | 'week' | 'day' | 'agenda';
           }}
           date={currentDate}
           onNavigate={(date) => {
             console.log('Calendar navigated to:', date);
             setCurrentDate(date);
             // Store current date in window for mobile drag calculation
-            (window as any).__calendarCurrentDate = date;
+            window.__calendarCurrentDate = date;
           }}
-          onSelectEvent={(event: any) => {
+          onSelectEvent={(event: CalendarEvent) => {
             // Don't select preview events
             if (event.id === 'mobile-preview') return;
-            handleSelectEvent(event as CalendarEvent);
+            handleSelectEvent(event);
           }}
-          eventPropGetter={(event: any) => {
+          eventPropGetter={(event: CalendarEvent) => {
             // Style preview events differently
             if (event.id === 'mobile-preview') {
               return {
@@ -514,39 +521,48 @@ export function Timeline({
             }
             return {};
           }}
-          dragFromOutsideItem={(start?: Date) => {
-            console.log('[Desktop Drag] dragFromOutsideItem prop called:', {
-              start,
-              currentDate,
-              view,
-              hasDraftData: !!(window as any).__draftDragData,
-            });
-            const result = dragFromOutsideItem(start);
-            console.log('[Desktop Drag] dragFromOutsideItem prop returning:', {
-              result,
-              hasStart: !!result?.start,
-              hasEnd: !!result?.end,
-            });
-            return result as any;
-          }}
-          onDropFromOutside={(args: any) => {
-            const { start, end, allDay } = args;
+          dragFromOutsideItem={
+            ((start?: Date) => {
+              console.log('[Desktop Drag] dragFromOutsideItem prop called:', {
+                start,
+                currentDate,
+                view,
+                hasDraftData: !!window.__draftDragData,
+              });
+              const result = dragFromOutsideItem(start);
+              console.log('[Desktop Drag] dragFromOutsideItem prop returning:', {
+                result,
+                hasStart: !!result?.start,
+                hasEnd: !!result?.end,
+              });
+              return result || undefined;
+            }) as () => CalendarEvent
+          }
+          onDropFromOutside={(args) => {
+            const start = args.start instanceof Date ? args.start : new Date(args.start);
+            const end = args.end instanceof Date ? args.end : new Date(args.end);
+            const allDay = args.allDay;
             console.log('[Desktop Drag] onDropFromOutside prop called:', {
               start,
               end,
               allDay,
               currentDate,
-              hasDraftData: !!(window as any).__draftDragData,
+              hasDraftData: !!window.__draftDragData,
             });
             handleDropFromExternal({ start, end, allDay });
           }}
-          onEventDrop={(args: any) => {
-            const { event, start, end, isAllDay } = args;
-            handleEventMove({ event: event as CalendarEvent, start, end, isAllDay });
+          onEventDrop={(args) => {
+            const event = args.event as CalendarEvent;
+            const start = args.start instanceof Date ? args.start : new Date(args.start);
+            const end = args.end instanceof Date ? args.end : new Date(args.end);
+            const isAllDay = args.isAllDay;
+            handleEventMove({ event, start, end, isAllDay });
           }}
-          onEventResize={(args: any) => {
-            const { event, start, end } = args;
-            handleEventResize({ event: event as CalendarEvent, start, end });
+          onEventResize={(args) => {
+            const event = args.event as CalendarEvent;
+            const start = args.start instanceof Date ? args.start : new Date(args.start);
+            const end = args.end instanceof Date ? args.end : new Date(args.end);
+            handleEventResize({ event, start, end });
           }}
           resizable
           draggableAccessor={() => true}

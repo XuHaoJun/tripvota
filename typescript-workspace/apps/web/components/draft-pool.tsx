@@ -2,10 +2,6 @@
 
 import { useRef, useCallback } from 'react';
 
-import { X, GripVertical } from 'lucide-react';
-
-import { Button } from '@workspace/ui/components/button';
-
 import type { DraftItem } from '@/lib/mock-data';
 
 import { DraftCard } from './draft-card';
@@ -22,6 +18,8 @@ interface DraftPoolProps {
 }
 
 export function DraftPool({ items, onRemove, onScroll, onStartDrag, onAddToTimeline, mode }: DraftPoolProps) {
+  // onStartDrag is passed but not used in this component - it's handled by DraftCard
+  void onStartDrag;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isScrollingRef = useRef(false);
 
@@ -34,18 +32,6 @@ export function DraftPool({ items, onRemove, onScroll, onStartDrag, onAddToTimel
       }, 1000);
     }
   }, [onScroll]);
-
-  const handleDragStart = useCallback(
-    (e: React.DragEvent, item: DraftItem) => {
-      onStartDrag();
-      // Store in dataTransfer for standard drag-and-drop
-      e.dataTransfer.setData('application/json', JSON.stringify(item));
-      e.dataTransfer.effectAllowed = 'move';
-      // Also store in window for react-big-calendar's onDropFromOutside
-      (window as any).__draftDragData = JSON.stringify(item);
-    },
-    [onStartDrag],
-  );
 
   return (
     <div className="bg-background flex h-full flex-col">
