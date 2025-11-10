@@ -183,8 +183,9 @@ export function Timeline({
           previewStart,
           previewEnd,
           currentDate,
-          isInCurrentWeek: previewStart >= new Date(currentDate.getTime() - currentDate.getDay() * 24 * 60 * 60 * 1000) &&
-                          previewStart <= new Date(currentDate.getTime() + (6 - currentDate.getDay()) * 24 * 60 * 60 * 1000),
+          isInCurrentWeek:
+            previewStart >= new Date(currentDate.getTime() - currentDate.getDay() * 24 * 60 * 60 * 1000) &&
+            previewStart <= new Date(currentDate.getTime() + (6 - currentDate.getDay()) * 24 * 60 * 60 * 1000),
         });
 
         // Return a temporary event object for preview
@@ -200,7 +201,7 @@ export function Timeline({
   // Convert timeline items to calendar events
   const events = useMemo(() => {
     const baseEvents = items.map(timelineItemToEvent);
-    
+
     // Add preview event if dragging from mobile
     // Use the SAME logic as desktop: call dragFromOutsideItem with the calculated date
     // This ensures mobile preview matches desktop preview exactly
@@ -208,7 +209,7 @@ export function Timeline({
       try {
         // Use dragFromOutsideItem to create preview - same as desktop!
         const previewEvent = dragFromOutsideItem(previewDate);
-        
+
         if (previewEvent) {
           // Override the ID to identify it as mobile preview
           const mobilePreviewEvent: CalendarEvent = {
@@ -219,20 +220,20 @@ export function Timeline({
               id: 'mobile-preview',
             },
           };
-          
+
           console.log('[Mobile Drag] Creating preview event using dragFromOutsideItem:', {
             previewDate,
             previewEvent: mobilePreviewEvent,
             currentDate,
           });
-          
+
           return [...baseEvents, mobilePreviewEvent];
         }
       } catch (error) {
         console.error('[Mobile Drag] Failed to create preview event:', error);
       }
     }
-    
+
     return baseEvents;
   }, [items, previewDate, dragFromOutsideItem, currentDate]);
 
@@ -412,7 +413,7 @@ export function Timeline({
         hasDraftData: !!(window as any).__draftDragData,
         currentDate,
       });
-      
+
       // Use the same logic as desktop: call dragFromOutsideItem with the calculated date
       // This ensures the preview uses the exact same calculation
       if (date && (window as any).__draftDragData) {
@@ -420,13 +421,13 @@ export function Timeline({
         console.log('[Mobile Drag] Preview event from dragFromOutsideItem:', previewEvent);
         // The preview event will be added to events array via previewDate state
       }
-      
+
       setPreviewDate(date);
     };
 
     window.addEventListener('mobile-drag-drop', handleMobileDrop as EventListener);
     window.addEventListener('mobile-drag-preview', handleMobilePreview as EventListener);
-    
+
     return () => {
       window.removeEventListener('mobile-drag-drop', handleMobileDrop as EventListener);
       window.removeEventListener('mobile-drag-preview', handleMobilePreview as EventListener);

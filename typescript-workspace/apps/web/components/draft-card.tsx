@@ -32,178 +32,173 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
   };
 
   // Mobile touch drag handlers (using native events with passive: false)
-  const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (mode !== 'arrangement') return;
-    
-    const touch = e.touches[0];
-    if (!touch) return;
+  const handleTouchStart = useCallback(
+    (e: TouchEvent) => {
+      if (mode !== 'arrangement') return;
 
-    touchStartRef.current = {
-      x: touch.clientX,
-      y: touch.clientY,
-      time: Date.now(),
-    };
+      const touch = e.touches[0];
+      if (!touch) return;
 
-    // Store drag data (same as desktop)
-    (window as any).__draftDragData = JSON.stringify(item);
+      touchStartRef.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+        time: Date.now(),
+      };
 
-    // Create drag element immediately
-    if (cardRef.current) {
-      const dragElement = cardRef.current.cloneNode(true) as HTMLElement;
-      Object.assign(dragElement.style, {
-        position: 'fixed',
-        pointerEvents: 'none',
-        opacity: '0.9',
-        transform: 'rotate(2deg)',
-        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
-        zIndex: '9999',
-        width: `${cardRef.current.offsetWidth}px`,
-        left: `${touch.clientX - cardRef.current.offsetWidth / 2}px`,
-        top: `${touch.clientY - cardRef.current.offsetHeight / 2}px`,
-      });
-      document.body.appendChild(dragElement);
-      dragElementRef.current = dragElement;
+      // Store drag data (same as desktop)
+      (window as any).__draftDragData = JSON.stringify(item);
 
-      setIsDragging(true);
+      // Create drag element immediately
+      if (cardRef.current) {
+        const dragElement = cardRef.current.cloneNode(true) as HTMLElement;
+        Object.assign(dragElement.style, {
+          position: 'fixed',
+          pointerEvents: 'none',
+          opacity: '0.9',
+          transform: 'rotate(2deg)',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+          zIndex: '9999',
+          width: `${cardRef.current.offsetWidth}px`,
+          left: `${touch.clientX - cardRef.current.offsetWidth / 2}px`,
+          top: `${touch.clientY - cardRef.current.offsetHeight / 2}px`,
+        });
+        document.body.appendChild(dragElement);
+        dragElementRef.current = dragElement;
 
-      // Add visual feedback to original
-      cardRef.current.style.opacity = '0.5';
-      cardRef.current.style.transform = 'scale(0.95)';
-    }
-  }, [mode, item]);
+        setIsDragging(true);
+
+        // Add visual feedback to original
+        cardRef.current.style.opacity = '0.5';
+        cardRef.current.style.transform = 'scale(0.95)';
+      }
+    },
+    [mode, item],
+  );
 
   // Helper function to calculate date/time from touch position in month view
-  const calculateDropDateForMonthView = useCallback((
-    touchX: number,
-    touchY: number,
-    calendarElement: HTMLElement,
-    calendarViewDate: Date | undefined
-  ): Date | null => {
-    // In month view, find which date cell the touch is over
-    const monthView = calendarElement.querySelector('.rbc-month-view') as HTMLElement;
-    if (!monthView) {
-      console.log('[Mobile Drag] Month view not found');
-      return null;
-    }
-    
-    if (!calendarViewDate) {
-      console.warn('[Mobile Drag] Calendar view date not found for month view');
-      return null;
-    }
-    
-    // Find all day background cells (.rbc-day-bg) - these are the drop targets
-    const dayBgCells = monthView.querySelectorAll('.rbc-day-bg');
-    let targetDayBg: HTMLElement | null = null;
-    let dayBgIndex = -1;
-    
-    // Find the day-bg cell that contains the touch point
-    dayBgCells.forEach((cell, index) => {
-      const cellEl = cell as HTMLElement;
-      const rect = cellEl.getBoundingClientRect();
-      if (
-        touchX >= rect.left &&
-        touchX <= rect.right &&
-        touchY >= rect.top &&
-        touchY <= rect.bottom
-      ) {
-        targetDayBg = cellEl;
-        dayBgIndex = index;
+  const calculateDropDateForMonthView = useCallback(
+    (touchX: number, touchY: number, calendarElement: HTMLElement, calendarViewDate: Date | undefined): Date | null => {
+      // In month view, find which date cell the touch is over
+      const monthView = calendarElement.querySelector('.rbc-month-view') as HTMLElement;
+      if (!monthView) {
+        console.log('[Mobile Drag] Month view not found');
+        return null;
       }
-    });
-    
-    if (!targetDayBg || dayBgIndex === -1) {
-      console.log('[Mobile Drag] No day-bg cell found at touch position');
-      return null;
-    }
-    
-    // Find the corresponding date cell (.rbc-date-cell) at the same index
-    // Both .rbc-day-bg and .rbc-date-cell are in the same row structure
-    const dateCells = monthView.querySelectorAll('.rbc-date-cell');
-    if (dayBgIndex >= dateCells.length) {
-      console.warn('[Mobile Drag] Day-bg index out of range:', dayBgIndex, 'total cells:', dateCells.length);
-      return null;
-    }
-    
-    const dateCell = dateCells[dayBgIndex] as HTMLElement;
-    if (!dateCell) {
-      console.warn('[Mobile Drag] No date cell found at index:', dayBgIndex);
-      return null;
-    }
-    
-    // Extract date from the button inside the date cell
-    // The date number is in <button class="rbc-button-link">XX</button>
-    const button = dateCell.querySelector('.rbc-button-link') as HTMLElement;
-    if (!button) {
-      console.warn('[Mobile Drag] No button found in date cell');
-      return null;
-    }
-    
-    const dayText = button.textContent?.trim();
-    if (!dayText) {
-      console.warn('[Mobile Drag] No day text found in button');
-      return null;
-    }
-    
-    // Parse day number from button text (e.g., "01", "10", "27")
-    const dayNumber = parseInt(dayText, 10);
-    if (isNaN(dayNumber) || dayNumber < 1 || dayNumber > 31) {
-      console.warn('[Mobile Drag] Invalid day number:', dayText);
-      return null;
-    }
-    
-    // Calculate the full date based on the current month being displayed
-    const viewDate = new Date(calendarViewDate);
-    const year = viewDate.getFullYear();
-    const month = viewDate.getMonth();
-    
-    // Check if this is an off-range cell (previous/next month dates)
-    // TypeScript: After null check, targetDayBg is definitely HTMLElement
-    const dayBg = targetDayBg as HTMLElement;
-    const isOffRange = dayBg.classList.contains('rbc-off-range-bg') || 
-                       dateCell.classList.contains('rbc-off-range');
-    
-    let targetDate: Date;
-    if (isOffRange) {
-      // For off-range dates, we need to determine if it's previous or next month
-      // If day number is > 15, it's likely previous month
-      // If day number is < 15, it's likely next month
-      if (dayNumber > 15) {
-        // Previous month
-        const prevMonth = month === 0 ? 11 : month - 1;
-        const prevYear = month === 0 ? year - 1 : year;
-        targetDate = new Date(prevYear, prevMonth, dayNumber);
+
+      if (!calendarViewDate) {
+        console.warn('[Mobile Drag] Calendar view date not found for month view');
+        return null;
+      }
+
+      // Find all day background cells (.rbc-day-bg) - these are the drop targets
+      const dayBgCells = monthView.querySelectorAll('.rbc-day-bg');
+      let targetDayBg: HTMLElement | null = null;
+      let dayBgIndex = -1;
+
+      // Find the day-bg cell that contains the touch point
+      dayBgCells.forEach((cell, index) => {
+        const cellEl = cell as HTMLElement;
+        const rect = cellEl.getBoundingClientRect();
+        if (touchX >= rect.left && touchX <= rect.right && touchY >= rect.top && touchY <= rect.bottom) {
+          targetDayBg = cellEl;
+          dayBgIndex = index;
+        }
+      });
+
+      if (!targetDayBg || dayBgIndex === -1) {
+        console.log('[Mobile Drag] No day-bg cell found at touch position');
+        return null;
+      }
+
+      // Find the corresponding date cell (.rbc-date-cell) at the same index
+      // Both .rbc-day-bg and .rbc-date-cell are in the same row structure
+      const dateCells = monthView.querySelectorAll('.rbc-date-cell');
+      if (dayBgIndex >= dateCells.length) {
+        console.warn('[Mobile Drag] Day-bg index out of range:', dayBgIndex, 'total cells:', dateCells.length);
+        return null;
+      }
+
+      const dateCell = dateCells[dayBgIndex] as HTMLElement;
+      if (!dateCell) {
+        console.warn('[Mobile Drag] No date cell found at index:', dayBgIndex);
+        return null;
+      }
+
+      // Extract date from the button inside the date cell
+      // The date number is in <button class="rbc-button-link">XX</button>
+      const button = dateCell.querySelector('.rbc-button-link') as HTMLElement;
+      if (!button) {
+        console.warn('[Mobile Drag] No button found in date cell');
+        return null;
+      }
+
+      const dayText = button.textContent?.trim();
+      if (!dayText) {
+        console.warn('[Mobile Drag] No day text found in button');
+        return null;
+      }
+
+      // Parse day number from button text (e.g., "01", "10", "27")
+      const dayNumber = parseInt(dayText, 10);
+      if (isNaN(dayNumber) || dayNumber < 1 || dayNumber > 31) {
+        console.warn('[Mobile Drag] Invalid day number:', dayText);
+        return null;
+      }
+
+      // Calculate the full date based on the current month being displayed
+      const viewDate = new Date(calendarViewDate);
+      const year = viewDate.getFullYear();
+      const month = viewDate.getMonth();
+
+      // Check if this is an off-range cell (previous/next month dates)
+      // TypeScript: After null check, targetDayBg is definitely HTMLElement
+      const dayBg = targetDayBg as HTMLElement;
+      const isOffRange = dayBg.classList.contains('rbc-off-range-bg') || dateCell.classList.contains('rbc-off-range');
+
+      let targetDate: Date;
+      if (isOffRange) {
+        // For off-range dates, we need to determine if it's previous or next month
+        // If day number is > 15, it's likely previous month
+        // If day number is < 15, it's likely next month
+        if (dayNumber > 15) {
+          // Previous month
+          const prevMonth = month === 0 ? 11 : month - 1;
+          const prevYear = month === 0 ? year - 1 : year;
+          targetDate = new Date(prevYear, prevMonth, dayNumber);
+        } else {
+          // Next month
+          const nextMonth = month === 11 ? 0 : month + 1;
+          const nextYear = month === 11 ? year + 1 : year;
+          targetDate = new Date(nextYear, nextMonth, dayNumber);
+        }
       } else {
-        // Next month
-        const nextMonth = month === 11 ? 0 : month + 1;
-        const nextYear = month === 11 ? year + 1 : year;
-        targetDate = new Date(nextYear, nextMonth, dayNumber);
+        // Current month
+        targetDate = new Date(year, month, dayNumber);
       }
-    } else {
-      // Current month
-      targetDate = new Date(year, month, dayNumber);
-    }
-    
-    // In month view, default to 9:00 AM (or could use current time)
-    targetDate.setHours(9, 0, 0, 0);
-    
-    console.log('[Mobile Drag] Calculated drop date for month view:', {
-      calendarViewDate,
-      targetDate,
-      dayText,
-      dayNumber,
-      isOffRange,
-      year,
-      month,
-    });
-    
-    return targetDate;
-  }, []);
+
+      // In month view, default to 9:00 AM (or could use current time)
+      targetDate.setHours(9, 0, 0, 0);
+
+      console.log('[Mobile Drag] Calculated drop date for month view:', {
+        calendarViewDate,
+        targetDate,
+        dayText,
+        dayNumber,
+        isOffRange,
+        year,
+        month,
+      });
+
+      return targetDate;
+    },
+    [],
+  );
 
   // Helper function to calculate date/time from touch position
   const calculateDropDate = useCallback((touchX: number, touchY: number): Date | null => {
     // Find calendar element directly (don't use elementFromPoint as it might hit the drag element)
     const calendarElement = document.querySelector('.rbc-calendar') as HTMLElement;
-    
+
     if (!calendarElement) return null;
 
     // Check if touch is within calendar bounds
@@ -220,35 +215,42 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
     // Get current view type and date to determine how to calculate date
     const calendarView = (window as any).__calendarCurrentView || 'week';
     const calendarViewDate = (window as any).__calendarCurrentDate;
-    
+
     // Handle month view differently - it doesn't have time-content
     if (calendarView === 'month') {
       return calculateDropDateForMonthView(touchX, touchY, calendarElement, calendarViewDate);
     }
-    
+
     // For week/day view, find the time content area (the actual scrollable time grid)
     // This is where the time slots are rendered
     const timeContent = calendarElement.querySelector('.rbc-time-content') as HTMLElement;
-    
+
     if (!timeContent) {
       console.log('[Mobile Drag] Time content not found');
       return null;
     }
 
     const gridRect = timeContent.getBoundingClientRect();
-    
+
     // CRITICAL: Account for scroll position! react-big-calendar calculates dates
     // relative to the scrolled content, not the viewport
     const scrollTop = timeContent.scrollTop;
-    
+
     // Calculate relative position within the time grid
     // Add scrollTop to account for scrolled content
-    const relativeY = (touchY - gridRect.top) + scrollTop;
+    const relativeY = touchY - gridRect.top + scrollTop;
     const relativeX = touchX - gridRect.left;
 
     // If touch is above the time grid (in header area), return null
     if (relativeY < 0) {
-      console.log('[Mobile Drag] Touch is above time grid, relativeY:', relativeY, 'gridRect.top:', gridRect.top, 'touchY:', touchY);
+      console.log(
+        '[Mobile Drag] Touch is above time grid, relativeY:',
+        relativeY,
+        'gridRect.top:',
+        gridRect.top,
+        'touchY:',
+        touchY,
+      );
       return null;
     }
 
@@ -263,7 +265,7 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
     // Find which day column - look for day slots within the time content
     const daySlots = calendarElement.querySelectorAll('.rbc-day-slot');
     let dayOffset = 0;
-    
+
     if (calendarView === 'day') {
       // In day view, there's only one day, so dayOffset is always 0
       dayOffset = 0;
@@ -289,7 +291,7 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
     // CRITICAL: Use scrollHeight instead of height to get the full content height
     const timeSlots = calendarElement.querySelectorAll('.rbc-time-slot');
     let hourHeight = 60; // Default 60px per hour
-    
+
     if (timeSlots.length > 0) {
       const firstSlot = timeSlots[0] as HTMLElement;
       const slotHeight = firstSlot.offsetHeight; // Use offsetHeight, not getBoundingClientRect
@@ -310,7 +312,7 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
 
     // Clamp hours to valid range (0-23)
     hours = Math.max(0, Math.min(23, hours));
-    
+
     // Ensure minutes are non-negative
     if (minutes < 0) {
       minutes = 0;
@@ -322,12 +324,12 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
       console.warn('Calendar current date not found, using today');
       return null;
     }
-    
+
     const viewDate = new Date(calendarViewDate);
-    
+
     // CRITICAL: Handle day view vs week view differently
     let targetDate: Date;
-    
+
     if (calendarView === 'day') {
       // In day view, always use the current date (dayOffset should be 0)
       targetDate = new Date(viewDate);
@@ -336,12 +338,12 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
     } else {
       // In week view, calculate from week start + day offset
       const viewDay = viewDate.getDay();
-      
+
       // Calculate the start of the week being displayed (Sunday = 0)
       const weekStart = new Date(viewDate);
       weekStart.setDate(weekStart.getDate() - viewDay);
       weekStart.setHours(0, 0, 0, 0);
-      
+
       // Add the day offset to get the target day within the displayed week
       // dayOffset is 0-6 representing Sunday-Saturday
       targetDate = new Date(weekStart);
@@ -376,34 +378,39 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
     return targetDate;
   }, []);
 
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    // Check if we have a touch start reference (more reliable than isDragging state)
-    if (!touchStartRef.current) return;
+  const handleTouchMove = useCallback(
+    (e: TouchEvent) => {
+      // Check if we have a touch start reference (more reliable than isDragging state)
+      if (!touchStartRef.current) return;
 
-    const touch = e.touches[0];
-    if (!touch) return;
+      const touch = e.touches[0];
+      if (!touch) return;
 
-    const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
-    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+      const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+      const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
 
-    // Only prevent default and update position if moved more than 5px (prevents accidental drags)
-    if (deltaX < 5 && deltaY < 5) return;
+      // Only prevent default and update position if moved more than 5px (prevents accidental drags)
+      if (deltaX < 5 && deltaY < 5) return;
 
-    e.preventDefault(); // Prevent scrolling while dragging
+      e.preventDefault(); // Prevent scrolling while dragging
 
-    // Update drag element position
-    if (dragElementRef.current && cardRef.current) {
-      dragElementRef.current.style.left = `${touch.clientX - cardRef.current.offsetWidth / 2}px`;
-      dragElementRef.current.style.top = `${touch.clientY - cardRef.current.offsetHeight / 2}px`;
-    }
+      // Update drag element position
+      if (dragElementRef.current && cardRef.current) {
+        dragElementRef.current.style.left = `${touch.clientX - cardRef.current.offsetWidth / 2}px`;
+        dragElementRef.current.style.top = `${touch.clientY - cardRef.current.offsetHeight / 2}px`;
+      }
 
-    // Calculate and dispatch preview date if over calendar
-    const previewDate = calculateDropDate(touch.clientX, touch.clientY);
-    // Always dispatch, even if null, to clear preview when not over calendar
-    window.dispatchEvent(new CustomEvent('mobile-drag-preview', {
-      detail: { date: previewDate },
-    }));
-  }, [calculateDropDate]);
+      // Calculate and dispatch preview date if over calendar
+      const previewDate = calculateDropDate(touch.clientX, touch.clientY);
+      // Always dispatch, even if null, to clear preview when not over calendar
+      window.dispatchEvent(
+        new CustomEvent('mobile-drag-preview', {
+          detail: { date: previewDate },
+        }),
+      );
+    },
+    [calculateDropDate],
+  );
 
   const handleTouchEnd = useCallback((e: TouchEvent) => {
     // Check if we actually started a drag
@@ -428,19 +435,20 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
     const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
 
     // Find calendar drop zone (look for react-big-calendar elements)
-    const calendarElement = elementAtPoint?.closest('.rbc-calendar') || 
-                           elementAtPoint?.closest('[class*="rbc-calendar"]') ||
-                           document.querySelector('.rbc-calendar');
+    const calendarElement =
+      elementAtPoint?.closest('.rbc-calendar') ||
+      elementAtPoint?.closest('[class*="rbc-calendar"]') ||
+      document.querySelector('.rbc-calendar');
 
     if (calendarElement && dragElementRef.current) {
       // Use calculateDropDate to get the drop date/time (works for all views: month, week, day)
       const dropDate = calculateDropDate(touch.clientX, touch.clientY);
-      
+
       if (dropDate) {
         // Get default duration based on item type (same logic as desktop)
         const dragData = (window as any).__draftDragData;
         let defaultDuration = 90; // Default 90 minutes
-        
+
         if (dragData) {
           try {
             const draftItem: DraftItem = typeof dragData === 'string' ? JSON.parse(dragData) : dragData;
@@ -469,21 +477,25 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
         });
 
         // Dispatch drop event - timeline component will handle it
-        window.dispatchEvent(new CustomEvent('mobile-drag-drop', {
-          detail: {
-            start: dropDate,
-            end: dropEnd,
-          },
-        }));
+        window.dispatchEvent(
+          new CustomEvent('mobile-drag-drop', {
+            detail: {
+              start: dropDate,
+              end: dropEnd,
+            },
+          }),
+        );
       } else {
         console.log('[Mobile Drag] No valid drop date calculated at touch position');
       }
     }
 
     // Clear preview
-    window.dispatchEvent(new CustomEvent('mobile-drag-preview', {
-      detail: { date: null },
-    }));
+    window.dispatchEvent(
+      new CustomEvent('mobile-drag-preview', {
+        detail: { date: null },
+      }),
+    );
 
     // Cleanup
     if (dragElementRef.current) {
@@ -538,7 +550,7 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
       document.removeEventListener('touchmove', touchMoveHandler);
       document.removeEventListener('touchend', touchEndHandler);
       document.removeEventListener('touchcancel', touchEndHandler);
-      
+
       // Cleanup drag element if still exists
       if (dragElementRef.current) {
         document.body.removeChild(dragElementRef.current);
@@ -564,7 +576,7 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
           e.dataTransfer.effectAllowed = 'move';
           // Store in window for react-big-calendar's onDropFromOutside
           (window as any).__draftDragData = JSON.stringify(item);
-          
+
           console.log('[Desktop Drag] Stored draft data:', {
             hasData: !!(window as any).__draftDragData,
             calendarCurrentDate: (window as any).__calendarCurrentDate,

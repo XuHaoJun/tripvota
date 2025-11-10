@@ -33,7 +33,6 @@ const LfButton = React.forwardRef<HTMLDivElement, LfButtonProps>(
       style = 'link',
       color,
       gravity,
-      adjustMode,
       onAction,
       className,
     },

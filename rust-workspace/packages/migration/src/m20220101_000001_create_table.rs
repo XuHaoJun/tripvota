@@ -1,6 +1,6 @@
+use sea_orm::ConnectionTrait;
 use sea_orm_migration::prelude::*;
 use sea_orm_migration::sea_query::{Expr, ForeignKey, Index};
-use sea_orm::ConnectionTrait;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -137,10 +137,13 @@ impl MigrationTrait for Migration {
                             .text()
                             .not_null()
                             .default("planning")
-                            .check(
-                                Expr::col(Trips::Status)
-                                    .is_in(vec!["planning", "confirmed", "in_progress", "completed", "cancelled"]),
-                            ),
+                            .check(Expr::col(Trips::Status).is_in(vec![
+                                "planning",
+                                "confirmed",
+                                "in_progress",
+                                "completed",
+                                "cancelled",
+                            ])),
                     )
                     .col(
                         ColumnDef::new(Trips::CreatedAt)
@@ -198,16 +201,21 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(TripParticipants::Table)
                     .col(ColumnDef::new(TripParticipants::TripId).uuid().not_null())
-                    .col(ColumnDef::new(TripParticipants::ResParterId).uuid().not_null())
+                    .col(
+                        ColumnDef::new(TripParticipants::ResParterId)
+                            .uuid()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(TripParticipants::Role)
                             .text()
                             .not_null()
                             .default("participant")
-                            .check(
-                                Expr::col(TripParticipants::Role)
-                                    .is_in(vec!["owner", "participant", "invited"]),
-                            ),
+                            .check(Expr::col(TripParticipants::Role).is_in(vec![
+                                "owner",
+                                "participant",
+                                "invited",
+                            ])),
                     )
                     .col(
                         ColumnDef::new(TripParticipants::JoinedAt)
@@ -293,16 +301,14 @@ impl MigrationTrait for Migration {
                             .text()
                             .not_null()
                             .default("draft")
-                            .check(
-                                Expr::col(TripCards::Status)
-                                    .is_in(vec!["draft", "scheduled", "completed", "cancelled"]),
-                            ),
+                            .check(Expr::col(TripCards::Status).is_in(vec![
+                                "draft",
+                                "scheduled",
+                                "completed",
+                                "cancelled",
+                            ])),
                     )
-                    .col(
-                        ColumnDef::new(TripCards::DisplayOrder)
-                            .integer()
-                            .default(0),
-                    )
+                    .col(ColumnDef::new(TripCards::DisplayOrder).integer().default(0))
                     .col(
                         ColumnDef::new(TripCards::VoteCount)
                             .integer()
@@ -328,7 +334,11 @@ impl MigrationTrait for Migration {
             .await?;
 
         // Add GEOGRAPHY column for position (PostGIS) using raw SQL
-        exec_raw_sql(manager, "ALTER TABLE trip_cards ADD COLUMN position GEOGRAPHY(POINT, 4326)").await?;
+        exec_raw_sql(
+            manager,
+            "ALTER TABLE trip_cards ADD COLUMN position GEOGRAPHY(POINT, 4326)",
+        )
+        .await?;
 
         // Create foreign keys for trip_cards
         manager
@@ -578,7 +588,11 @@ impl MigrationTrait for Migration {
             .await?;
 
         // Create indexes on chats (with WHERE clauses require raw SQL)
-        exec_raw_sql(manager, "CREATE INDEX idx_chats_trip_id ON chats (trip_id) WHERE trip_id IS NOT NULL").await?;
+        exec_raw_sql(
+            manager,
+            "CREATE INDEX idx_chats_trip_id ON chats (trip_id) WHERE trip_id IS NOT NULL",
+        )
+        .await?;
         exec_raw_sql(manager, "CREATE UNIQUE INDEX idx_chats_trip_main ON chats (trip_id) WHERE trip_id IS NOT NULL AND is_main").await?;
 
         // Create chat_participants table
@@ -587,7 +601,11 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(ChatParticipants::Table)
                     .col(ColumnDef::new(ChatParticipants::ChatId).uuid().not_null())
-                    .col(ColumnDef::new(ChatParticipants::ResParterId).uuid().not_null())
+                    .col(
+                        ColumnDef::new(ChatParticipants::ResParterId)
+                            .uuid()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(ChatParticipants::Role)
                             .text()
@@ -650,7 +668,9 @@ impl MigrationTrait for Migration {
 
         // Create messages table (partitioned)
         // Note: Sea-ORM doesn't have built-in support for partitioned tables, so we use raw SQL
-        exec_raw_sql(manager, r#"
+        exec_raw_sql(
+            manager,
+            r#"
             CREATE TABLE messages (
                 id uuid DEFAULT uuidv7(),
                 chat_id uuid NOT NULL,
@@ -661,13 +681,19 @@ impl MigrationTrait for Migration {
                 UNIQUE (id, created_at),
                 PRIMARY KEY (chat_id, id, created_at)
             ) PARTITION BY RANGE (created_at)
-        "#).await?;
+        "#,
+        )
+        .await?;
 
         // Create foreign key for messages (must use raw SQL after table creation)
         exec_raw_sql(manager, "ALTER TABLE messages ADD CONSTRAINT fk_messages_chat FOREIGN KEY (chat_id) REFERENCES chats(id)").await?;
 
         // Create index on messages
-        exec_raw_sql(manager, "CREATE INDEX idx_messages_chat_timestamp ON messages (chat_id, created_at DESC)").await?;
+        exec_raw_sql(
+            manager,
+            "CREATE INDEX idx_messages_chat_timestamp ON messages (chat_id, created_at DESC)",
+        )
+        .await?;
 
         Ok(())
     }

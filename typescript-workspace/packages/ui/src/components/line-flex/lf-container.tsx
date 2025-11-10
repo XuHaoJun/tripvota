@@ -4,7 +4,7 @@ import { cn } from '@workspace/ui/lib/utils';
 
 import { LfBubble } from './lf-bubble';
 import { LfCarousel } from './lf-carousel';
-import type { FlexMessage, FlexBubble, FlexCarousel, FlexAction } from './utils/lf-types';
+import type { FlexBubble, FlexCarousel, FlexAction } from './utils/lf-types';
 
 export interface LfContainerProps {
   /** The Flex Message content (Bubble or Carousel) */

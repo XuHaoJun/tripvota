@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { cn } from '@workspace/ui/lib/utils';
 
-import { getMarginClass, getMarginStyle } from './utils/lf-helpers';
+import { getMarginClass } from './utils/lf-helpers';
 import type { FlexSeparator } from './utils/lf-types';
 
 export interface LfSeparatorProps extends FlexSeparator {
