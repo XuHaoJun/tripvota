@@ -71,48 +71,48 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Create res_parter table
+        // Create profiles table
         manager
             .create_table(
                 Table::create()
-                    .table(ResParter::Table)
+                    .table(Profiles::Table)
                     .col(
-                        ColumnDef::new(ResParter::Id)
+                        ColumnDef::new(Profiles::Id)
                             .uuid()
                             .not_null()
                             .default(Expr::cust("uuidv7()"))
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(ResParter::Username).text().not_null())
-                    .col(ColumnDef::new(ResParter::Email).text().not_null())
-                    .col(ColumnDef::new(ResParter::Phone).text().not_null())
-                    .col(ColumnDef::new(ResParter::ThirdId).text())
-                    .col(ColumnDef::new(ResParter::ThirdProviderType).text())
-                    .col(ColumnDef::new(ResParter::ChannelBridgeId).uuid())
+                    .col(ColumnDef::new(Profiles::Username).text().not_null())
+                    .col(ColumnDef::new(Profiles::Email).text().not_null())
+                    .col(ColumnDef::new(Profiles::Phone).text().not_null())
+                    .col(ColumnDef::new(Profiles::ThirdId).text())
+                    .col(ColumnDef::new(Profiles::ThirdProviderType).text())
+                    .col(ColumnDef::new(Profiles::ChannelBridgeId).uuid())
                     .col(
-                        ColumnDef::new(ResParter::CreatedAt)
+                        ColumnDef::new(Profiles::CreatedAt)
                             .timestamp_with_time_zone()
                             .not_null()
                             .default(Expr::cust("now()")),
                     )
-                    .col(ColumnDef::new(ResParter::Metadata).json_binary())
+                    .col(ColumnDef::new(Profiles::Metadata).json_binary())
                     .to_owned(),
             )
             .await?;
 
-        // Create foreign key from res_parter to channel_bridge
+        // Create foreign key from profiles to channel_bridge
         manager
             .create_foreign_key(
                 ForeignKey::create()
-                    .name("fk_res_parter_channel_bridge")
-                    .from(ResParter::Table, ResParter::ChannelBridgeId)
+                    .name("fk_profiles_channel_bridge")
+                    .from(Profiles::Table, Profiles::ChannelBridgeId)
                     .to(ChannelBridge::Table, ChannelBridge::Id)
                     .to_owned(),
             )
             .await?;
 
-        // Create unique index on res_parter with WHERE clause (requires raw SQL)
-        exec_raw_sql(manager, "CREATE UNIQUE INDEX idx_res_parter_third_login ON res_parter (third_provider_type, third_id) WHERE third_id IS NOT NULL AND third_provider_type IS NOT NULL").await?;
+        // Create unique index on profiles with WHERE clause (requires raw SQL)
+        exec_raw_sql(manager, "CREATE UNIQUE INDEX idx_profiles_third_login ON profiles (third_provider_type, third_id) WHERE third_id IS NOT NULL AND third_provider_type IS NOT NULL").await?;
 
         // Create trips table
         manager
@@ -162,13 +162,13 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Create foreign key from trips to res_parter
+        // Create foreign key from trips to profiles
         manager
             .create_foreign_key(
                 ForeignKey::create()
                     .name("fk_trips_created_by")
                     .from(Trips::Table, Trips::CreatedBy)
-                    .to(ResParter::Table, ResParter::Id)
+                    .to(Profiles::Table, Profiles::Id)
                     .to_owned(),
             )
             .await?;
@@ -202,7 +202,7 @@ impl MigrationTrait for Migration {
                     .table(TripParticipants::Table)
                     .col(ColumnDef::new(TripParticipants::TripId).uuid().not_null())
                     .col(
-                        ColumnDef::new(TripParticipants::ResParterId)
+                        ColumnDef::new(TripParticipants::ProfileId)
                             .uuid()
                             .not_null(),
                     )
@@ -227,7 +227,7 @@ impl MigrationTrait for Migration {
                         Index::create()
                             .name("pk_trip_participants")
                             .col(TripParticipants::TripId)
-                            .col(TripParticipants::ResParterId),
+                            .col(TripParticipants::ProfileId),
                     )
                     .to_owned(),
             )
@@ -248,9 +248,9 @@ impl MigrationTrait for Migration {
         manager
             .create_foreign_key(
                 ForeignKey::create()
-                    .name("fk_trip_participants_res_parter")
-                    .from(TripParticipants::Table, TripParticipants::ResParterId)
-                    .to(ResParter::Table, ResParter::Id)
+                    .name("fk_trip_participants_profile")
+                    .from(TripParticipants::Table, TripParticipants::ProfileId)
+                    .to(Profiles::Table, Profiles::Id)
                     .on_delete(ForeignKeyAction::Cascade)
                     .to_owned(),
             )
@@ -260,9 +260,9 @@ impl MigrationTrait for Migration {
         manager
             .create_index(
                 Index::create()
-                    .name("idx_trip_participants_res_parter")
+                    .name("idx_trip_participants_profile")
                     .table(TripParticipants::Table)
-                    .col(TripParticipants::ResParterId)
+                    .col(TripParticipants::ProfileId)
                     .to_owned(),
             )
             .await?;
@@ -357,7 +357,7 @@ impl MigrationTrait for Migration {
                 ForeignKey::create()
                     .name("fk_trip_cards_created_by")
                     .from(TripCards::Table, TripCards::CreatedBy)
-                    .to(ResParter::Table, ResParter::Id)
+                    .to(Profiles::Table, Profiles::Id)
                     .to_owned(),
             )
             .await?;
@@ -451,7 +451,7 @@ impl MigrationTrait for Migration {
                 ForeignKey::create()
                     .name("fk_trip_card_rich_text_last_edited_by")
                     .from(TripCardRichText::Table, TripCardRichText::LastEditedBy)
-                    .to(ResParter::Table, ResParter::Id)
+                    .to(Profiles::Table, Profiles::Id)
                     .to_owned(),
             )
             .await?;
@@ -462,7 +462,7 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(TripCardVotes::Table)
                     .col(ColumnDef::new(TripCardVotes::TripCardId).uuid().not_null())
-                    .col(ColumnDef::new(TripCardVotes::ResParterId).uuid().not_null())
+                    .col(ColumnDef::new(TripCardVotes::ProfileId).uuid().not_null())
                     .col(
                         ColumnDef::new(TripCardVotes::VoteType)
                             .text()
@@ -483,7 +483,7 @@ impl MigrationTrait for Migration {
                         Index::create()
                             .name("pk_trip_card_votes")
                             .col(TripCardVotes::TripCardId)
-                            .col(TripCardVotes::ResParterId),
+                            .col(TripCardVotes::ProfileId),
                     )
                     .to_owned(),
             )
@@ -504,9 +504,9 @@ impl MigrationTrait for Migration {
         manager
             .create_foreign_key(
                 ForeignKey::create()
-                    .name("fk_trip_card_votes_res_parter")
-                    .from(TripCardVotes::Table, TripCardVotes::ResParterId)
-                    .to(ResParter::Table, ResParter::Id)
+                    .name("fk_trip_card_votes_profile")
+                    .from(TripCardVotes::Table, TripCardVotes::ProfileId)
+                    .to(Profiles::Table, Profiles::Id)
                     .on_delete(ForeignKeyAction::Cascade)
                     .to_owned(),
             )
@@ -526,9 +526,9 @@ impl MigrationTrait for Migration {
         manager
             .create_index(
                 Index::create()
-                    .name("idx_trip_card_votes_res_parter")
+                    .name("idx_trip_card_votes_profile")
                     .table(TripCardVotes::Table)
-                    .col(TripCardVotes::ResParterId)
+                    .col(TripCardVotes::ProfileId)
                     .to_owned(),
             )
             .await?;
@@ -582,7 +582,7 @@ impl MigrationTrait for Migration {
                 ForeignKey::create()
                     .name("fk_chats_created_by")
                     .from(Chats::Table, Chats::CreatedBy)
-                    .to(ResParter::Table, ResParter::Id)
+                    .to(Profiles::Table, Profiles::Id)
                     .to_owned(),
             )
             .await?;
@@ -602,7 +602,7 @@ impl MigrationTrait for Migration {
                     .table(ChatParticipants::Table)
                     .col(ColumnDef::new(ChatParticipants::ChatId).uuid().not_null())
                     .col(
-                        ColumnDef::new(ChatParticipants::ResParterId)
+                        ColumnDef::new(ChatParticipants::ProfileId)
                             .uuid()
                             .not_null(),
                     )
@@ -626,7 +626,7 @@ impl MigrationTrait for Migration {
                         Index::create()
                             .name("pk_chat_participants")
                             .col(ChatParticipants::ChatId)
-                            .col(ChatParticipants::ResParterId),
+                            .col(ChatParticipants::ProfileId),
                     )
                     .to_owned(),
             )
@@ -647,9 +647,9 @@ impl MigrationTrait for Migration {
         manager
             .create_foreign_key(
                 ForeignKey::create()
-                    .name("fk_chat_participants_res_parter")
-                    .from(ChatParticipants::Table, ChatParticipants::ResParterId)
-                    .to(ResParter::Table, ResParter::Id)
+                    .name("fk_chat_participants_profile")
+                    .from(ChatParticipants::Table, ChatParticipants::ProfileId)
+                    .to(Profiles::Table, Profiles::Id)
                     .on_delete(ForeignKeyAction::Cascade)
                     .to_owned(),
             )
@@ -659,9 +659,9 @@ impl MigrationTrait for Migration {
         manager
             .create_index(
                 Index::create()
-                    .name("idx_chat_participants_res_parter")
+                    .name("idx_chat_participants_profile")
                     .table(ChatParticipants::Table)
-                    .col(ChatParticipants::ResParterId)
+                    .col(ChatParticipants::ProfileId)
                     .to_owned(),
             )
             .await?;
@@ -725,7 +725,7 @@ impl MigrationTrait for Migration {
             .drop_table(Table::drop().table(Trips::Table).to_owned())
             .await?;
         manager
-            .drop_table(Table::drop().table(ResParter::Table).to_owned())
+            .drop_table(Table::drop().table(Profiles::Table).to_owned())
             .await?;
         manager
             .drop_table(Table::drop().table(ChannelBridge::Table).to_owned())
@@ -749,7 +749,7 @@ enum ChannelBridge {
 }
 
 #[derive(DeriveIden)]
-enum ResParter {
+enum Profiles {
     Table,
     Id,
     Username,
@@ -782,7 +782,7 @@ enum Trips {
 enum TripParticipants {
     Table,
     TripId,
-    ResParterId,
+    ProfileId,
     Role,
     JoinedAt,
 }
@@ -823,7 +823,7 @@ enum TripCardRichText {
 enum TripCardVotes {
     Table,
     TripCardId,
-    ResParterId,
+    ProfileId,
     VoteType,
     CreatedAt,
 }
@@ -844,7 +844,7 @@ enum Chats {
 enum ChatParticipants {
     Table,
     ChatId,
-    ResParterId,
+    ProfileId,
     Role,
     JoinedAt,
 }

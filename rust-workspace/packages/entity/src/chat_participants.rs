@@ -3,28 +3,15 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-#[sea_orm(table_name = "messages")]
+#[sea_orm(table_name = "chat_participants")]
 pub struct Model {
-    #[sea_orm(
-        primary_key,
-        auto_increment = false,
-        unique_key = "messages_id_created_at_key"
-    )]
-    pub id: Uuid,
     #[sea_orm(primary_key, auto_increment = false)]
     pub chat_id: Uuid,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub profile_id: Uuid,
     #[sea_orm(column_type = "Text")]
-    pub sender_role: String,
-    #[sea_orm(column_type = "Text")]
-    pub content: String,
-    #[sea_orm(
-        primary_key,
-        auto_increment = false,
-        unique_key = "messages_id_created_at_key"
-    )]
-    pub created_at: DateTimeWithTimeZone,
-    #[sea_orm(column_type = "JsonBinary", nullable)]
-    pub metadata: Option<Json>,
+    pub role: String,
+    pub joined_at: DateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -34,14 +21,28 @@ pub enum Relation {
         from = "Column::ChatId",
         to = "super::chats::Column::Id",
         on_update = "NoAction",
-        on_delete = "NoAction"
+        on_delete = "Cascade"
     )]
     Chats,
+    #[sea_orm(
+        belongs_to = "super::profiles::Entity",
+        from = "Column::ProfileId",
+        to = "super::profiles::Column::Id",
+        on_update = "NoAction",
+        on_delete = "Cascade"
+    )]
+    Profiles,
 }
 
 impl Related<super::chats::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Chats.def()
+    }
+}
+
+impl Related<super::profiles::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Profiles.def()
     }
 }
 

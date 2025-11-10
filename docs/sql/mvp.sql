@@ -23,7 +23,7 @@ CREATE TABLE channel_bridge (
 CREATE UNIQUE INDEX idx_channel_bridge_third_login ON channel_bridge (third_provider_type, third_id);
 
 -- Stores user information (human or AI bot)
-CREATE TABLE res_parter (
+CREATE TABLE profiles (
     id uuid DEFAULT uuidv7() PRIMARY KEY,
     username TEXT NOT NULL,
     email TEXT NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE res_parter (
 );
 
 -- Index for efficient lookup by third-party login
-CREATE UNIQUE INDEX idx_res_parter_third_login ON res_parter (third_provider_type, third_id) WHERE third_id IS NOT NULL AND third_provider_type IS NOT NULL;
+CREATE UNIQUE INDEX idx_profiles_third_login ON profiles (third_provider_type, third_id) WHERE third_id IS NOT NULL AND third_provider_type IS NOT NULL;
 
 -- ============================================================================
 -- Trip-related Tables
@@ -46,7 +46,7 @@ CREATE UNIQUE INDEX idx_res_parter_third_login ON res_parter (third_provider_typ
 -- Stores trip information for short-term travel collaboration
 CREATE TABLE trips (
     id uuid DEFAULT uuidv7() PRIMARY KEY,
-    created_by uuid NOT NULL REFERENCES res_parter(id),
+    created_by uuid NOT NULL REFERENCES profiles(id),
     title TEXT NOT NULL,
     description TEXT,
     destination TEXT,
@@ -66,14 +66,14 @@ CREATE INDEX idx_trips_dates ON trips (start_date, end_date);
 -- Junction table to link trips with multiple participants
 CREATE TABLE trip_participants (
     trip_id uuid NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-    res_parter_id uuid NOT NULL REFERENCES res_parter(id) ON DELETE CASCADE,
+    profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     role TEXT NOT NULL DEFAULT 'participant' CHECK (role IN ('owner', 'participant', 'invited')),
     joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (trip_id, res_parter_id)
+    PRIMARY KEY (trip_id, profile_id)
 );
 
 -- Index for efficient lookup of trips by user
-CREATE INDEX idx_trip_participants_res_parter ON trip_participants (res_parter_id);
+CREATE INDEX idx_trip_participants_profile ON trip_participants (profile_id);
 CREATE INDEX idx_trip_participants_trip ON trip_participants (trip_id);
 
 -- Stores trip cards (events/ideas) that can be collected and scheduled on timeline
@@ -81,7 +81,7 @@ CREATE INDEX idx_trip_participants_trip ON trip_participants (trip_id);
 CREATE TABLE trip_cards (
     id uuid DEFAULT uuidv7() PRIMARY KEY,
     trip_id uuid NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-    created_by uuid NOT NULL REFERENCES res_parter(id),
+    created_by uuid NOT NULL REFERENCES profiles(id),
     
     -- Basic card information
     title TEXT NOT NULL,
@@ -116,7 +116,7 @@ CREATE TABLE trip_cards (
 CREATE TABLE trip_card_rich_text (
     trip_card_id uuid PRIMARY KEY REFERENCES trip_cards(id) ON DELETE CASCADE,
     content JSONB NOT NULL,
-    last_edited_by uuid REFERENCES res_parter(id),
+    last_edited_by uuid REFERENCES profiles(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -132,15 +132,15 @@ CREATE INDEX idx_trip_cards_position ON trip_cards USING GIST (position) WHERE p
 -- Stores votes for trip cards (for voting functionality)
 CREATE TABLE trip_card_votes (
     trip_card_id uuid NOT NULL REFERENCES trip_cards(id) ON DELETE CASCADE,
-    res_parter_id uuid NOT NULL REFERENCES res_parter(id) ON DELETE CASCADE,
+    profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     vote_type TEXT NOT NULL DEFAULT 'upvote' CHECK (vote_type IN ('upvote', 'downvote')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (trip_card_id, res_parter_id)
+    PRIMARY KEY (trip_card_id, profile_id)
 );
 
 -- Index for efficient lookup of votes
 CREATE INDEX idx_trip_card_votes_card ON trip_card_votes (trip_card_id);
-CREATE INDEX idx_trip_card_votes_res_parter ON trip_card_votes (res_parter_id);
+CREATE INDEX idx_trip_card_votes_profile ON trip_card_votes (profile_id);
 
 -- ============================================================================
 -- Chat-related Tables
@@ -150,7 +150,7 @@ CREATE INDEX idx_trip_card_votes_res_parter ON trip_card_votes (res_parter_id);
 CREATE TABLE chats (
     id uuid DEFAULT uuidv7() PRIMARY KEY,
     trip_id uuid REFERENCES trips(id) ON DELETE CASCADE,
-    created_by uuid NOT NULL REFERENCES res_parter(id),
+    created_by uuid NOT NULL REFERENCES profiles(id),
     title TEXT, -- e.g., "Chat about PostgreSQL"
     is_main BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -164,14 +164,14 @@ CREATE UNIQUE INDEX idx_chats_trip_main ON chats (trip_id) WHERE trip_id IS NOT 
 -- Junction table to link chats with multiple users
 CREATE TABLE chat_participants (
     chat_id uuid NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
-    res_parter_id uuid NOT NULL REFERENCES res_parter(id) ON DELETE CASCADE,
+    profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     role TEXT NOT NULL DEFAULT 'participant' CHECK (role IN ('owner', 'participant')),
     joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (chat_id, res_parter_id)
+    PRIMARY KEY (chat_id, profile_id)
 );
 
 -- Index for efficient lookup of chats by user
-CREATE INDEX idx_chat_participants_res_parter ON chat_participants (res_parter_id);
+CREATE INDEX idx_chat_participants_profile ON chat_participants (profile_id);
 
 -- Stores every single message
 CREATE TABLE messages (
