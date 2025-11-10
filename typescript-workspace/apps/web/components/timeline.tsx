@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -104,11 +104,13 @@ export function Timeline({
   const [editingItem, setEditingItem] = useState<TimelineItem | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<View>('week');
+  const [previewDate, setPreviewDate] = useState<Date | null>(null);
 
-  // Convert timeline items to calendar events
-  const events = useMemo(() => {
-    return items.map(timelineItemToEvent);
-  }, [items]);
+  // Store current date and view in window on mount and when they change
+  useEffect(() => {
+    (window as any).__calendarCurrentDate = currentDate;
+    (window as any).__calendarCurrentView = view;
+  }, [currentDate, view]);
 
   // Handle event selection - open bottom sheet instead of modal
   const handleSelectEvent = useCallback((event: CalendarEvent) => {
@@ -139,8 +141,17 @@ export function Timeline({
   // This should return an event object with start and end times for preview
   const dragFromOutsideItem = useCallback(
     (start?: Date): CalendarEvent | null => {
+      console.log('[Desktop Drag] dragFromOutsideItem called:', {
+        start,
+        hasDraftData: !!(window as any).__draftDragData,
+        currentDate,
+      });
+
       const dragData = (window as any).__draftDragData;
-      if (!dragData) return null;
+      if (!dragData) {
+        console.log('[Desktop Drag] No draft data found');
+        return null;
+      }
 
       try {
         const draftItem: DraftItem = typeof dragData === 'string' ? JSON.parse(dragData) : dragData;
@@ -153,8 +164,7 @@ export function Timeline({
         const previewEnd = new Date(previewStart);
         previewEnd.setMinutes(previewEnd.getMinutes() + defaultDuration);
 
-        // Return a temporary event object for preview
-        return {
+        const previewEvent = {
           id: `preview-${Date.now()}`,
           title: draftItem.title,
           start: previewStart,
@@ -167,13 +177,64 @@ export function Timeline({
             title: draftItem.title,
           },
         };
+
+        console.log('[Desktop Drag] Returning preview event:', {
+          previewEvent,
+          previewStart,
+          previewEnd,
+          currentDate,
+          isInCurrentWeek: previewStart >= new Date(currentDate.getTime() - currentDate.getDay() * 24 * 60 * 60 * 1000) &&
+                          previewStart <= new Date(currentDate.getTime() + (6 - currentDate.getDay()) * 24 * 60 * 60 * 1000),
+        });
+
+        // Return a temporary event object for preview
+        return previewEvent;
       } catch (error) {
-        console.error('Failed to parse drag data:', error);
+        console.error('[Desktop Drag] Failed to parse drag data:', error);
         return null;
       }
     },
-    [snapToNearestSlot, getDefaultDuration],
+    [snapToNearestSlot, getDefaultDuration, currentDate],
   );
+
+  // Convert timeline items to calendar events
+  const events = useMemo(() => {
+    const baseEvents = items.map(timelineItemToEvent);
+    
+    // Add preview event if dragging from mobile
+    // Use the SAME logic as desktop: call dragFromOutsideItem with the calculated date
+    // This ensures mobile preview matches desktop preview exactly
+    if (previewDate && (window as any).__draftDragData) {
+      try {
+        // Use dragFromOutsideItem to create preview - same as desktop!
+        const previewEvent = dragFromOutsideItem(previewDate);
+        
+        if (previewEvent) {
+          // Override the ID to identify it as mobile preview
+          const mobilePreviewEvent: CalendarEvent = {
+            ...previewEvent,
+            id: 'mobile-preview',
+            resource: {
+              ...previewEvent.resource,
+              id: 'mobile-preview',
+            },
+          };
+          
+          console.log('[Mobile Drag] Creating preview event using dragFromOutsideItem:', {
+            previewDate,
+            previewEvent: mobilePreviewEvent,
+            currentDate,
+          });
+          
+          return [...baseEvents, mobilePreviewEvent];
+        }
+      } catch (error) {
+        console.error('[Mobile Drag] Failed to create preview event:', error);
+      }
+    }
+    
+    return baseEvents;
+  }, [items, previewDate, dragFromOutsideItem, currentDate]);
 
   // Check for time conflicts
   const checkConflict = useCallback(
@@ -193,15 +254,26 @@ export function Timeline({
   // Handle drop from draft card (external drag)
   const handleDropFromExternal = useCallback(
     ({ start, end, allDay }: { start: Date; end: Date; allDay?: boolean }) => {
+      console.log('[Desktop Drag] handleDropFromExternal called:', {
+        start,
+        end,
+        allDay,
+        currentDate,
+        hasDraftData: !!(window as any).__draftDragData,
+      });
+
       // Get draft item from window data (not from dragFromOutsideItem which returns CalendarEvent)
       const dragData = (window as any).__draftDragData;
-      if (!dragData) return;
+      if (!dragData) {
+        console.log('[Desktop Drag] No draft data in handleDropFromExternal');
+        return;
+      }
 
       let draftItem: DraftItem;
       try {
         draftItem = typeof dragData === 'string' ? JSON.parse(dragData) : dragData;
       } catch (error) {
-        console.error('Failed to parse drag data:', error);
+        console.error('[Desktop Drag] Failed to parse drag data:', error);
         return;
       }
 
@@ -225,6 +297,14 @@ export function Timeline({
         const dayNumber = Math.floor((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) + 1;
         const date = `Day ${dayNumber}`;
         const time = format(snappedStart, 'HH:mm');
+
+        console.log('[Desktop Drag] Creating timeline item:', {
+          snappedStart,
+          snappedEnd,
+          date,
+          time,
+          hasConflict,
+        });
 
         const newTimelineItem: TimelineItem = {
           id: `timeline-${Date.now()}`,
@@ -306,6 +386,53 @@ export function Timeline({
     [items, onUpdateTimeline],
   );
 
+  // Store dragFromOutsideItem function reference for mobile to use
+  const dragFromOutsideItemRef = useRef(dragFromOutsideItem);
+  useEffect(() => {
+    dragFromOutsideItemRef.current = dragFromOutsideItem;
+  }, [dragFromOutsideItem]);
+
+  // Listen for mobile drag-drop events and preview updates
+  useEffect(() => {
+    const handleMobileDrop = (event: CustomEvent) => {
+      const { start, end } = event.detail;
+      // Check if drag data exists
+      if ((window as any).__draftDragData) {
+        handleDropFromExternal({ start, end });
+      }
+      // Clear preview
+      setPreviewDate(null);
+    };
+
+    const handleMobilePreview = (event: CustomEvent) => {
+      const { date } = event.detail;
+      // Update preview date (can be null to clear preview)
+      console.log('[Mobile Drag] Preview event received:', {
+        date,
+        hasDraftData: !!(window as any).__draftDragData,
+        currentDate,
+      });
+      
+      // Use the same logic as desktop: call dragFromOutsideItem with the calculated date
+      // This ensures the preview uses the exact same calculation
+      if (date && (window as any).__draftDragData) {
+        const previewEvent = dragFromOutsideItemRef.current(date);
+        console.log('[Mobile Drag] Preview event from dragFromOutsideItem:', previewEvent);
+        // The preview event will be added to events array via previewDate state
+      }
+      
+      setPreviewDate(date);
+    };
+
+    window.addEventListener('mobile-drag-drop', handleMobileDrop as EventListener);
+    window.addEventListener('mobile-drag-preview', handleMobilePreview as EventListener);
+    
+    return () => {
+      window.removeEventListener('mobile-drag-drop', handleMobileDrop as EventListener);
+      window.removeEventListener('mobile-drag-preview', handleMobilePreview as EventListener);
+    };
+  }, [handleDropFromExternal]);
+
   // Check if editing item has conflict
   const editingItemHasConflict = useMemo(() => {
     if (!editingItem) return false;
@@ -345,21 +472,71 @@ export function Timeline({
         <DragAndDropCalendar
           localizer={localizer}
           events={events as any}
-          startAccessor={(event: any) => (event as CalendarEvent).start}
-          endAccessor={(event: any) => (event as CalendarEvent).end}
+          startAccessor={(event: any) => {
+            const e = event as CalendarEvent;
+            return e.start;
+          }}
+          endAccessor={(event: any) => {
+            const e = event as CalendarEvent;
+            return e.end;
+          }}
           style={{ height: '100%' }}
           defaultView="week"
           view={view}
-          onView={setView}
+          onView={(newView) => {
+            setView(newView);
+            // Store current view in window for mobile drag calculation
+            (window as any).__calendarCurrentView = newView;
+          }}
           date={currentDate}
-          onNavigate={setCurrentDate}
-          onSelectEvent={(event: any) => handleSelectEvent(event as CalendarEvent)}
+          onNavigate={(date) => {
+            console.log('Calendar navigated to:', date);
+            setCurrentDate(date);
+            // Store current date in window for mobile drag calculation
+            (window as any).__calendarCurrentDate = date;
+          }}
+          onSelectEvent={(event: any) => {
+            // Don't select preview events
+            if (event.id === 'mobile-preview') return;
+            handleSelectEvent(event as CalendarEvent);
+          }}
+          eventPropGetter={(event: any) => {
+            // Style preview events differently
+            if (event.id === 'mobile-preview') {
+              return {
+                style: {
+                  backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                  border: '2px dashed rgba(59, 130, 246, 0.8)',
+                  opacity: 0.7,
+                },
+              };
+            }
+            return {};
+          }}
           dragFromOutsideItem={(start?: Date) => {
+            console.log('[Desktop Drag] dragFromOutsideItem prop called:', {
+              start,
+              currentDate,
+              view,
+              hasDraftData: !!(window as any).__draftDragData,
+            });
             const result = dragFromOutsideItem(start);
+            console.log('[Desktop Drag] dragFromOutsideItem prop returning:', {
+              result,
+              hasStart: !!result?.start,
+              hasEnd: !!result?.end,
+            });
             return result as any;
           }}
           onDropFromOutside={(args: any) => {
             const { start, end, allDay } = args;
+            console.log('[Desktop Drag] onDropFromOutside prop called:', {
+              start,
+              end,
+              allDay,
+              currentDate,
+              hasDraftData: !!(window as any).__draftDragData,
+            });
             handleDropFromExternal({ start, end, allDay });
           }}
           onEventDrop={(args: any) => {
