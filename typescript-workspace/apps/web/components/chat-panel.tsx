@@ -6,16 +6,16 @@ import { Plus } from 'lucide-react';
 
 import { Button } from '@workspace/ui/components/button';
 
-import type { ConversationMessage, DraftItem } from '@/lib/mock-data';
+import type { Message, TripCard } from '@/lib/mock-data';
 
-interface ConversationPanelProps {
-  messages: ConversationMessage[];
+interface ChatPanelProps {
+  messages: Message[];
   onAddMessage: (content: string) => void;
-  onAddToDraftPool: (item: DraftItem) => void;
+  onAddToDraftPool: (item: TripCard) => void;
   onFocusInput: () => void;
 }
 
-export function ConversationPanel({ messages, onAddMessage, onAddToDraftPool, onFocusInput }: ConversationPanelProps) {
+export function ChatPanel({ messages, onAddMessage, onAddToDraftPool, onFocusInput }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -37,12 +37,22 @@ export function ConversationPanel({ messages, onAddMessage, onAddToDraftPool, on
   };
 
   const handleAddIdea = (content: string) => {
-    const draftItem: DraftItem = {
-      id: `draft-${Date.now()}`,
+    const tripCard: TripCard = {
+      id: `trip-card-${Date.now()}`,
+      tripId: 'trip-1',
+      createdBy: 'user-1',
       title: content.length > 30 ? content.substring(0, 30) + '...' : content,
       description: content,
+      category: null,
+      startTime: null,
+      endTime: null,
+      status: 'draft',
+      displayOrder: null,
+      voteCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
-    onAddToDraftPool(draftItem);
+    onAddToDraftPool(tripCard);
   };
 
   return (
@@ -50,14 +60,14 @@ export function ConversationPanel({ messages, onAddMessage, onAddToDraftPool, on
       {/* Messages Area */}
       <div className="scrollbar-hide -webkit-overflow-scrolling-touch flex-1 space-y-4 overflow-y-auto p-4">
         {messages.map((message) => (
-          <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          <div key={message.id} className={`flex ${message.senderRole === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
               className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                message.senderRole === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
               }`}
             >
               <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-              {message.role === 'ai' && (
+              {message.senderRole === 'assistant' && (
                 <Button
                   variant="ghost"
                   size="sm"

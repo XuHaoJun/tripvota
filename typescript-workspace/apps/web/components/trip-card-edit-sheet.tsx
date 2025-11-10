@@ -2,44 +2,43 @@
 
 import { useState, useEffect } from 'react';
 
+import { format } from 'date-fns';
 import { X, Clock, Calendar as CalendarIcon, AlertCircle } from 'lucide-react';
 
 import { Button } from '@workspace/ui/components/button';
 
-import type { TimelineItem } from '@/lib/mock-data';
+import type { TripCard } from '@/lib/mock-data';
 
-interface TimelineEditSheetProps {
-  item: TimelineItem | null;
+interface TripCardEditSheetProps {
+  item: TripCard | null;
   onClose: () => void;
-  onUpdate: (item: TimelineItem) => void;
+  onUpdate: (item: TripCard) => void;
   onDelete: (id: string) => void;
   hasConflict?: boolean;
 }
 
-export function TimelineEditSheet({ item, onClose, onUpdate, onDelete, hasConflict = false }: TimelineEditSheetProps) {
+export function TripCardEditSheet({ item, onClose, onUpdate, onDelete, hasConflict = false }: TripCardEditSheetProps) {
   const [title, setTitle] = useState(item?.title || '');
-  const [date, setDate] = useState(item?.date || 'Day 1');
-  const [startTime, setStartTime] = useState(item?.time || '10:00');
-  const [duration, setDuration] = useState(60); // minutes
+  const [startTime, setStartTime] = useState<Date>(item?.startTime || new Date());
+  const [endTime, setEndTime] = useState<Date>(item?.endTime || new Date());
 
   useEffect(() => {
     if (item) {
       setTitle(item.title);
-      setDate(item.date);
-      setStartTime(item.time);
+      setStartTime(item.startTime || new Date());
+      setEndTime(item.endTime || new Date(item.startTime?.getTime() + 60 * 60 * 1000) || new Date());
     }
   }, [item]);
 
   if (!item) return null;
 
   const handleSave = () => {
-    // Note: Duration is not stored in TimelineItem, only time is stored
-    // Duration is only used for display/editing purposes
     onUpdate({
       ...item,
       title,
-      date,
-      time: startTime,
+      startTime,
+      endTime,
+      updatedAt: new Date(),
     });
     onClose();
   };
@@ -51,13 +50,8 @@ export function TimelineEditSheet({ item, onClose, onUpdate, onDelete, hasConfli
     }
   };
 
-  // Calculate end time
-  const [hours, minutes] = startTime.split(':').map(Number);
-  const startMinutes = (hours || 0) * 60 + (minutes || 0);
-  const endMinutes = startMinutes + duration;
-  const endHours = Math.floor(endMinutes / 60);
-  const endMins = endMinutes % 60;
-  const endTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+  // Calculate duration in minutes
+  const duration = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
 
   return (
     <div className="animate-in slide-in-from-bottom fixed right-0 bottom-0 left-0 z-50 duration-300">
@@ -106,17 +100,22 @@ export function TimelineEditSheet({ item, onClose, onUpdate, onDelete, hasConfli
                 <CalendarIcon className="h-4 w-4" />
                 日期
               </label>
-              <select
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+              <input
+                type="date"
+                value={format(startTime, 'yyyy-MM-dd')}
+                onChange={(e) => {
+                  const newDate = new Date(e.target.value);
+                  const hours = startTime.getHours();
+                  const minutes = startTime.getMinutes();
+                  newDate.setHours(hours, minutes, 0, 0);
+                  setStartTime(newDate);
+                  // Update endTime to maintain duration
+                  const newEndTime = new Date(newDate);
+                  newEndTime.setTime(newDate.getTime() + duration * 60 * 1000);
+                  setEndTime(newEndTime);
+                }}
                 className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
-              >
-                <option value="Day 1">第1天</option>
-                <option value="Day 2">第2天</option>
-                <option value="Day 3">第3天</option>
-                <option value="Day 4">第4天</option>
-                <option value="Day 5">第5天</option>
-              </select>
+              />
             </div>
 
             {/* Time Range */}
@@ -129,8 +128,17 @@ export function TimelineEditSheet({ item, onClose, onUpdate, onDelete, hasConfli
                 <div className="flex-1">
                   <input
                     type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
+                    value={format(startTime, 'HH:mm')}
+                    onChange={(e) => {
+                      const [hours, minutes] = e.target.value.split(':').map(Number);
+                      const newStartTime = new Date(startTime);
+                      newStartTime.setHours(hours || 0, minutes || 0, 0, 0);
+                      setStartTime(newStartTime);
+                      // Update endTime to maintain duration
+                      const newEndTime = new Date(newStartTime);
+                      newEndTime.setTime(newStartTime.getTime() + duration * 60 * 1000);
+                      setEndTime(newEndTime);
+                    }}
                     className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
                   />
                   <p className="text-muted-foreground mt-1 text-xs">开始时间</p>
@@ -139,14 +147,14 @@ export function TimelineEditSheet({ item, onClose, onUpdate, onDelete, hasConfli
                 <div className="flex-1">
                   <input
                     type="time"
-                    value={endTime}
+                    value={format(endTime, 'HH:mm')}
                     onChange={(e) => {
-                      const [newHours, newMins] = e.target.value.split(':').map(Number);
-                      const newStartMinutes = (hours || 0) * 60 + (minutes || 0);
-                      const newEndMinutes = (newHours || 0) * 60 + (newMins || 0);
-                      const newDuration = newEndMinutes - newStartMinutes;
-                      if (newDuration > 0) {
-                        setDuration(newDuration);
+                      const [hours, minutes] = e.target.value.split(':').map(Number);
+                      const newEndTime = new Date(startTime);
+                      newEndTime.setHours(hours || 0, minutes || 0, 0, 0);
+                      // Ensure endTime is after startTime
+                      if (newEndTime > startTime) {
+                        setEndTime(newEndTime);
                       }
                     }}
                     className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
@@ -166,7 +174,12 @@ export function TimelineEditSheet({ item, onClose, onUpdate, onDelete, hasConfli
                   max="480"
                   step="15"
                   value={duration}
-                  onChange={(e) => setDuration(Number(e.target.value))}
+                  onChange={(e) => {
+                    const newDuration = Number(e.target.value);
+                    const newEndTime = new Date(startTime);
+                    newEndTime.setTime(startTime.getTime() + newDuration * 60 * 1000);
+                    setEndTime(newEndTime);
+                  }}
                   className="flex-1"
                 />
                 <span className="text-muted-foreground w-16 text-sm">

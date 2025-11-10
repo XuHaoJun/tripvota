@@ -6,7 +6,7 @@ import { X, GripVertical, Calendar } from 'lucide-react';
 
 import { Button } from '@workspace/ui/components/button';
 
-import type { DraftItem } from '@/lib/mock-data';
+import type { TripCard } from '@/lib/mock-data';
 
 type Mode = 'ideation' | 'collection' | 'arrangement';
 
@@ -20,14 +20,14 @@ declare global {
   }
 }
 
-interface DraftCardProps {
-  item: DraftItem;
+interface TripCardDisplayProps {
+  item: TripCard;
   onRemove: (id: string) => void;
-  onAddToTimeline: (item: DraftItem, time: string, date: string) => void;
+  onAddToTimeline: (item: TripCard, startTime: Date) => void;
   mode: Mode;
 }
 
-export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardProps) {
+export function TripCardDisplay({ item, onRemove, onAddToTimeline, mode }: TripCardDisplayProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedTime, setSelectedTime] = useState('10:00');
   const [selectedDate, setSelectedDate] = useState('Day 1');
@@ -36,7 +36,13 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
   const handleAddToTimeline = () => {
-    onAddToTimeline(item, selectedTime, selectedDate);
+    // Calculate Date from selected date and time
+    const dayNumber = parseInt(selectedDate.replace('Day ', '')) - 1;
+    const [hours, minutes] = selectedTime.split(':').map(Number);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() + dayNumber);
+    startDate.setHours(hours || 10, minutes || 0, 0, 0);
+    onAddToTimeline(item, startDate);
     setShowAddModal(false);
   };
 
@@ -461,8 +467,8 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
 
           if (dragData) {
             try {
-              const draftItem: DraftItem = typeof dragData === 'string' ? JSON.parse(dragData) : dragData;
-              const title = draftItem.title.toLowerCase();
+              const tripCard: TripCard = typeof dragData === 'string' ? JSON.parse(dragData) : dragData;
+              const title = tripCard.title.toLowerCase();
               if (title.includes('餐厅') || title.includes('美食') || title.includes('吃')) {
                 defaultDuration = 60; // 1 hour for restaurants
               }
@@ -650,7 +656,7 @@ export function DraftCard({ item, onRemove, onAddToTimeline, mode }: DraftCardPr
         {/* Content */}
         <div className="mt-2 flex-1">
           <h3 className="text-card-foreground mb-2 text-sm font-semibold">{item.title}</h3>
-          <p className="text-muted-foreground line-clamp-3 text-xs">{item.description}</p>
+          <p className="text-muted-foreground line-clamp-3 text-xs">{item.description || ''}</p>
         </div>
 
         {/* Actions */}

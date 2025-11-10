@@ -1,18 +1,46 @@
 # Tripvota Cursor Rules
 
 ## Monorepo Layout
+
 - `typescript-workspace`: ConnectRPC-based frontend packages and apps.
 - `rust-workspace`: Rust backend services.
 - `share/proto`: Single source of truth for protobuf definitions.
 
 ## Protobuf Workflow
+
 1. Edit or add `.proto` files in `share/proto`.
 2. After proto changes, regenerate the TypeScript bindings by running `pnpm --filter @workspace/proto-gen generate` from `typescript-workspace`. This updates the generated sources in `packages/proto-gen/src`.
 3. Commit the updated generated TypeScript files when the API change should be consumed by other packages.
 4. Rust services do not require a manual generation step—the bindings are recreated on build via `rust-workspace/apps/server/build.rs` using `axum_connect_build`.
 
 ## ConnectRPC Usage Notes
+
 - Aim for backward-compatible protobuf changes so both frontend and backend stay in sync.
 - Frontend code should import generated ConnectRPC clients and types from `packages/proto-gen`.
 - Backend code relies on the build-script regeneration; ensure builds are run after proto updates to pick up the latest definitions.
 
+## Naming Conventions
+
+### Database Schema (PostgreSQL)
+
+- **Tables**: Use snake_case (e.g., `trip_cards`, `trip_participants`, `trip_card_votes`)
+- **Columns**: Use snake_case (e.g., `trip_id`, `created_at`, `start_time`, `end_time`, `display_order`, `vote_count`)
+
+### TypeScript Types and Interfaces
+
+- **Types/Interfaces**: Use PascalCase matching table names (e.g., `TripCard` from `trip_cards`, `Message` from `messages`, `Chat` from `chats`)
+- **Fields**: Use camelCase converted from database snake_case (e.g., `tripId` from `trip_id`, `createdAt` from `created_at`, `startTime` from `start_time`, `endTime` from `end_time`, `displayOrder` from `display_order`, `voteCount` from `vote_count`)
+- **Component Props**: Use PascalCase with `Props` suffix (e.g., `TripCardProps`, `MessageProps`)
+- **Note on Draft Cards (草稿卡)**: A "draft card" is not a separate type—it's a `TripCard` with `status: 'draft'`. Similarly, scheduled cards are `TripCard` with `status: 'scheduled'`. Use the unified `TripCard` type and filter by `status` field when needed.
+
+### Conversion Pattern
+
+- Database `snake_case` → TypeScript `camelCase`
+- Database table `trip_cards` → TypeScript type `TripCard`
+- Database column `trip_id` → TypeScript field `tripId`
+- Database column `created_at` → TypeScript field `createdAt`
+
+### Rust Entities
+
+- Rust entity structs use snake_case for fields (matching database columns)
+- Entity names use PascalCase (e.g., `TripCards`, `Messages`)

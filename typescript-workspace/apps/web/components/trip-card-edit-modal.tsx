@@ -2,36 +2,38 @@
 
 import { useState, useEffect } from 'react';
 
+import { format } from 'date-fns';
 import { X, Trash2 } from 'lucide-react';
 
 import { Button } from '@workspace/ui/components/button';
 
-import type { TimelineItem } from '@/lib/mock-data';
+import type { TripCard } from '@/lib/mock-data';
 
-interface EditModalProps {
-  item: TimelineItem;
+interface TripCardEditModalProps {
+  item: TripCard;
   onClose: () => void;
   onDelete: (id: string) => void;
-  onUpdate: (item: TimelineItem) => void;
+  onUpdate: (item: TripCard) => void;
 }
 
-export function EditModal({ item, onClose, onDelete, onUpdate }: EditModalProps) {
+export function TripCardEditModal({ item, onClose, onDelete, onUpdate }: TripCardEditModalProps) {
   const [title, setTitle] = useState(item.title);
-  const [date, setDate] = useState(item.date);
-  const [time, setTime] = useState(item.time);
+  const [startTime, setStartTime] = useState<Date>(item.startTime || new Date());
+  const [endTime, setEndTime] = useState<Date>(item.endTime || new Date());
 
   useEffect(() => {
     setTitle(item.title);
-    setDate(item.date);
-    setTime(item.time);
+    setStartTime(item.startTime || new Date());
+    setEndTime(item.endTime || new Date());
   }, [item]);
 
   const handleSave = () => {
     onUpdate({
       ...item,
       title,
-      date,
-      time,
+      startTime,
+      endTime,
+      updatedAt: new Date(),
     });
   };
 
@@ -66,25 +68,48 @@ export function EditModal({ item, onClose, onDelete, onUpdate }: EditModalProps)
 
           <div>
             <label className="mb-2 block text-sm font-medium">日期</label>
-            <select
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
+            <input
+              type="date"
+              value={format(startTime, 'yyyy-MM-dd')}
+              onChange={(e) => {
+                const newDate = new Date(e.target.value);
+                const hours = startTime.getHours();
+                const minutes = startTime.getMinutes();
+                newDate.setHours(hours, minutes, 0, 0);
+                setStartTime(newDate);
+              }}
               className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
-            >
-              <option value="Day 1">第1天</option>
-              <option value="Day 2">第2天</option>
-              <option value="Day 3">第3天</option>
-              <option value="Day 4">第4天</option>
-              <option value="Day 5">第5天</option>
-            </select>
+            />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium">时间</label>
+            <label className="mb-2 block text-sm font-medium">开始时间</label>
             <input
               type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
+              value={format(startTime, 'HH:mm')}
+              onChange={(e) => {
+                const [hours, minutes] = e.target.value.split(':').map(Number);
+                const newStartTime = new Date(startTime);
+                newStartTime.setHours(hours || 0, minutes || 0, 0, 0);
+                setStartTime(newStartTime);
+              }}
+              className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium">结束时间</label>
+            <input
+              type="time"
+              value={format(endTime, 'HH:mm')}
+              onChange={(e) => {
+                const [hours, minutes] = e.target.value.split(':').map(Number);
+                const newEndTime = new Date(startTime);
+                newEndTime.setHours(hours || 0, minutes || 0, 0, 0);
+                if (newEndTime > startTime) {
+                  setEndTime(newEndTime);
+                }
+              }}
               className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
             />
           </div>

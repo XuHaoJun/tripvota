@@ -1,13 +1,17 @@
 'use client';
 
-import type { TimelineItem } from '@/lib/mock-data';
+import { format } from 'date-fns';
 
-interface TimelineItemProps {
-  item: TimelineItem;
+import type { TripCard } from '@/lib/mock-data';
+
+interface TripCardItemProps {
+  item: TripCard;
   onClick: () => void;
 }
 
-export function TimelineItem({ item, onClick }: TimelineItemProps) {
+export function TripCardItem({ item, onClick }: TripCardItemProps) {
+  const timeDisplay = item.startTime ? format(item.startTime, 'MMM d · HH:mm') : '未安排';
+
   return (
     <div
       onClick={onClick}
@@ -17,9 +21,7 @@ export function TimelineItem({ item, onClick }: TimelineItemProps) {
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <h4 className="text-card-foreground text-sm font-semibold">{item.title}</h4>
-          <p className="text-muted-foreground mt-1 text-xs">
-            {item.date} · {item.time}
-          </p>
+          <p className="text-muted-foreground mt-1 text-xs">{timeDisplay}</p>
         </div>
       </div>
     </div>

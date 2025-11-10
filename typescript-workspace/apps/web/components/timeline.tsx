@@ -12,10 +12,10 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 import { Button } from '@workspace/ui/components/button';
 
-import type { TimelineItem, DraftItem } from '@/lib/mock-data';
+import type { TripCard } from '@/lib/mock-data';
 
-import { EditModal } from './edit-modal';
-import { TimelineEditSheet } from './timeline-edit-sheet';
+import { TripCardEditModal } from './trip-card-edit-modal';
+import { TripCardEditSheet } from './trip-card-edit-sheet';
 
 // Extend Window interface for drag data
 declare global {
@@ -33,13 +33,13 @@ const DragAndDropCalendar = withDragAndDrop<CalendarEvent>(Calendar);
 type Mode = 'ideation' | 'collection' | 'arrangement';
 
 interface TimelineProps {
-  items: TimelineItem[];
-  draftItems: DraftItem[];
+  items: TripCard[];
+  draftItems: TripCard[];
   mode: Mode;
   onShowConversation: () => void;
-  onUpdateTimeline: (items: TimelineItem[]) => void;
+  onUpdateTimeline: (items: TripCard[]) => void;
   onStartArrangement?: () => void;
-  onJustAdded?: (item: TimelineItem) => void;
+  onJustAdded?: (item: TripCard) => void;
 }
 
 // Create a localizer using date-fns
@@ -57,27 +57,14 @@ interface CalendarEvent {
   title: string;
   start: Date;
   end: Date;
-  resource: TimelineItem;
+  resource: TripCard;
 }
 
-// Helper to convert TimelineItem to CalendarEvent
-const timelineItemToEvent = (item: TimelineItem): CalendarEvent => {
-  // Parse date and time
-  // Assuming date format is "Day 1", "Day 2", etc. and time is "HH:mm"
-  const dayNumberStr = item.date.replace('Day ', '');
-  const dayNumber = parseInt(dayNumberStr) - 1;
-  const timeParts = item.time.split(':');
-  const hours = timeParts[0] ? parseInt(timeParts[0]) : 0;
-  const minutes = timeParts[1] ? parseInt(timeParts[1]) : 0;
-
-  // Start from today, add days
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() + dayNumber);
-  startDate.setHours(hours, minutes, 0, 0);
-
-  // End time is 1 hour later by default
-  const endDate = new Date(startDate);
-  endDate.setHours(hours + 1, minutes, 0, 0);
+// Helper to convert TripCard to CalendarEvent
+const tripCardToEvent = (item: TripCard): CalendarEvent => {
+  // Use startTime and endTime directly from TripCard
+  const startDate = item.startTime || new Date();
+  const endDate = item.endTime || new Date(startDate.getTime() + 60 * 60 * 1000); // Default 1 hour
 
   return {
     id: item.id,
@@ -88,16 +75,14 @@ const timelineItemToEvent = (item: TimelineItem): CalendarEvent => {
   };
 };
 
-// Helper to convert CalendarEvent back to TimelineItem
-const eventToTimelineItem = (event: CalendarEvent): TimelineItem => {
-  const dayNumber = Math.floor((event.start.getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24)) + 1;
-  const date = `Day ${dayNumber}`;
-  const time = format(event.start, 'HH:mm');
-
+// Helper to convert CalendarEvent back to TripCard
+const eventToTripCard = (event: CalendarEvent): TripCard => {
   return {
     ...event.resource,
-    date,
-    time,
+    startTime: event.start,
+    endTime: event.end,
+    status: 'scheduled',
+    updatedAt: new Date(),
   };
 };
 
@@ -109,11 +94,14 @@ export function Timeline({
   onStartArrangement,
   onJustAdded,
 }: TimelineProps) {
-  const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
-  const [editingItem, setEditingItem] = useState<TimelineItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<TripCard | null>(null);
+  const [editingItem, setEditingItem] = useState<TripCard | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<View>('week');
   const [previewDate, setPreviewDate] = useState<Date | null>(null);
+
+  // Filter items to only show scheduled status cards
+  const scheduledItems = items.filter((item) => item.status === 'scheduled');
 
   // Store current date and view in window on mount and when they change
   useEffect(() => {
@@ -137,9 +125,9 @@ export function Timeline({
   }, []);
 
   // Get default duration based on item type (smart preset)
-  const getDefaultDuration = useCallback((draftItem: DraftItem): number => {
+  const getDefaultDuration = useCallback((tripCard: TripCard): number => {
     // Default to 1.5 hours for most items, 1 hour for restaurants
-    const title = draftItem.title.toLowerCase();
+    const title = tripCard.title.toLowerCase();
     if (title.includes('餐厅') || title.includes('美食') || title.includes('吃')) {
       return 60; // 1 hour
     }
@@ -163,27 +151,27 @@ export function Timeline({
       }
 
       try {
-        const draftItem: DraftItem = typeof dragData === 'string' ? JSON.parse(dragData) : dragData;
+        const tripCard: TripCard = typeof dragData === 'string' ? JSON.parse(dragData) : dragData;
 
         // Use provided start time or current time as fallback
         const previewStart = start ? snapToNearestSlot(start) : new Date();
 
         // Get default duration based on item type (same as snapToNearestSlot logic)
-        const defaultDuration = getDefaultDuration(draftItem);
+        const defaultDuration = getDefaultDuration(tripCard);
         const previewEnd = new Date(previewStart);
         previewEnd.setMinutes(previewEnd.getMinutes() + defaultDuration);
 
         const previewEvent = {
           id: `preview-${Date.now()}`,
-          title: draftItem.title,
+          title: tripCard.title,
           start: previewStart,
           end: previewEnd,
           resource: {
+            ...tripCard,
             id: `preview-${Date.now()}`,
-            draftId: draftItem.id,
-            time: format(previewStart, 'HH:mm'),
-            date: 'Day 1', // Will be calculated on drop
-            title: draftItem.title,
+            startTime: previewStart,
+            endTime: previewEnd,
+            status: 'scheduled' as const,
           },
         };
 
@@ -209,7 +197,7 @@ export function Timeline({
 
   // Convert timeline items to calendar events
   const events = useMemo(() => {
-    const baseEvents = items.map(timelineItemToEvent);
+    const baseEvents = scheduledItems.map(tripCardToEvent);
 
     // Add preview event if dragging from mobile
     // Use the SAME logic as desktop: call dragFromOutsideItem with the calculated date
@@ -244,7 +232,7 @@ export function Timeline({
     }
 
     return baseEvents;
-  }, [items, previewDate, dragFromOutsideItem, currentDate]);
+  }, [scheduledItems, previewDate, dragFromOutsideItem, currentDate]);
 
   // Check for time conflicts
   const checkConflict = useCallback(
@@ -279,9 +267,9 @@ export function Timeline({
         return;
       }
 
-      let draftItem: DraftItem;
+      let tripCard: TripCard;
       try {
-        draftItem = typeof dragData === 'string' ? JSON.parse(dragData) : dragData;
+        tripCard = typeof dragData === 'string' ? JSON.parse(dragData) : dragData;
       } catch (error) {
         console.error('[Desktop Drag] Failed to parse drag data:', error);
         return;
@@ -292,39 +280,29 @@ export function Timeline({
         const snappedStart = snapToNearestSlot(start);
 
         // Get default duration
-        const defaultDuration = getDefaultDuration(draftItem);
+        const defaultDuration = getDefaultDuration(tripCard);
         const snappedEnd = new Date(snappedStart);
         snappedEnd.setMinutes(snappedEnd.getMinutes() + defaultDuration);
 
         // Check for conflicts
         const hasConflict = checkConflict(snappedStart, snappedEnd);
 
-        // Calculate day number relative to today
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const startDate = new Date(snappedStart);
-        startDate.setHours(0, 0, 0, 0);
-        const dayNumber = Math.floor((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        const date = `Day ${dayNumber}`;
-        const time = format(snappedStart, 'HH:mm');
-
         console.log('[Desktop Drag] Creating timeline item:', {
           snappedStart,
           snappedEnd,
-          date,
-          time,
           hasConflict,
         });
 
-        const newTimelineItem: TimelineItem = {
-          id: `timeline-${Date.now()}`,
-          draftId: draftItem.id,
-          time,
-          date,
-          title: draftItem.title,
+        const newTripCard: TripCard = {
+          ...tripCard,
+          id: `trip-card-${Date.now()}`,
+          startTime: snappedStart,
+          endTime: snappedEnd,
+          status: 'scheduled',
+          updatedAt: new Date(),
         };
 
-        const updatedItems = [...items, newTimelineItem];
+        const updatedItems = [...items, newTripCard];
         onUpdateTimeline(updatedItems);
 
         // Clear drag data
@@ -332,8 +310,8 @@ export function Timeline({
 
         // Auto-open bottom edit sheet after drop (Aha! Moment)
         setTimeout(() => {
-          setEditingItem(newTimelineItem);
-          onJustAdded?.(newTimelineItem);
+          setEditingItem(newTripCard);
+          onJustAdded?.(newTripCard);
         }, 300);
       } catch (error) {
         console.error('Failed to create timeline item:', error);
@@ -346,7 +324,7 @@ export function Timeline({
   const handleEventMove = useCallback(
     (params: { event: CalendarEvent; start: Date; end: Date; isAllDay?: boolean }) => {
       const { event, start, end } = params;
-      const updatedItem = eventToTimelineItem({
+      const updatedItem = eventToTripCard({
         ...event,
         start,
         end,
@@ -360,7 +338,7 @@ export function Timeline({
   const handleEventResize = useCallback(
     (params: { event: CalendarEvent; start: Date; end: Date }) => {
       const { event, start, end } = params;
-      const updatedItem = eventToTimelineItem({
+      const updatedItem = eventToTripCard({
         ...event,
         start,
         end,
@@ -388,7 +366,7 @@ export function Timeline({
   );
 
   const handleUpdateItem = useCallback(
-    (updatedItem: TimelineItem) => {
+    (updatedItem: TripCard) => {
       onUpdateTimeline(items.map((item) => (item.id === updatedItem.id ? updatedItem : item)));
       setSelectedItem(null);
       setEditingItem(null);
@@ -446,7 +424,7 @@ export function Timeline({
   // Check if editing item has conflict
   const editingItemHasConflict = useMemo(() => {
     if (!editingItem) return false;
-    const event = timelineItemToEvent(editingItem);
+    const event = tripCardToEvent(editingItem);
     return checkConflict(event.start, event.end, editingItem.id);
   }, [editingItem, checkConflict]);
 
@@ -594,7 +572,7 @@ export function Timeline({
 
       {/* Edit Modal (fallback for non-calendar views) */}
       {selectedItem && (
-        <EditModal
+        <TripCardEditModal
           item={selectedItem}
           onClose={handleCloseModal}
           onDelete={handleDeleteItem}
@@ -604,7 +582,7 @@ export function Timeline({
 
       {/* Bottom Edit Sheet (primary editing interface) */}
       {editingItem && (
-        <TimelineEditSheet
+        <TripCardEditSheet
           item={editingItem}
           onClose={handleCloseSheet}
           onDelete={handleDeleteItem}

@@ -5,28 +5,27 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
 
-import { ConversationPanel } from '@/components/conversation-panel';
-import { DraftPool } from '@/components/draft-pool';
+import { ChatPanel } from '@/components/chat-panel';
 import { Timeline } from '@/components/timeline';
-import type { ConversationMessage, DraftItem, TimelineItem } from '@/lib/mock-data';
-import { initialMessages, initialDraftItems, initialTimelineItems } from '@/lib/mock-data';
+import { TripCardPool } from '@/components/trip-card-pool';
+import type { Message, TripCard } from '@/lib/mock-data';
+import { initialMessages, initialTripCards } from '@/lib/mock-data';
 
 type Mode = 'ideation' | 'collection' | 'arrangement';
 
-const MODE_SIZES: Record<Mode, { conversation: number; draftPool: number; timeline: number }> = {
-  ideation: { conversation: 70, draftPool: 20, timeline: 10 },
-  collection: { conversation: 30, draftPool: 60, timeline: 10 },
-  arrangement: { conversation: 0, draftPool: 20, timeline: 80 },
+const MODE_SIZES: Record<Mode, { chat: number; draftPool: number; timeline: number }> = {
+  ideation: { chat: 70, draftPool: 20, timeline: 10 },
+  collection: { chat: 30, draftPool: 60, timeline: 10 },
+  arrangement: { chat: 0, draftPool: 20, timeline: 80 },
 };
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>('ideation');
-  const [messages, setMessages] = useState<ConversationMessage[]>(initialMessages);
-  const [draftItems, setDraftItems] = useState<DraftItem[]>(initialDraftItems);
-  const [timelineItems, setTimelineItems] = useState<TimelineItem[]>(initialTimelineItems);
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [tripCards, setTripCards] = useState<TripCard[]>(initialTripCards);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  const conversationPanelRef = useRef<ImperativePanelHandle>(null);
+  const chatPanelRef = useRef<ImperativePanelHandle>(null);
   const draftPoolPanelRef = useRef<ImperativePanelHandle>(null);
   const timelinePanelRef = useRef<ImperativePanelHandle>(null);
 
@@ -41,14 +40,14 @@ export default function Home() {
 
       // Resize panels with smooth transition
       setTimeout(() => {
-        if (sizes.conversation === 0 && conversationPanelRef.current) {
-          conversationPanelRef.current.collapse();
+        if (sizes.chat === 0 && chatPanelRef.current) {
+          chatPanelRef.current.collapse();
         } else {
           // Expand if collapsed
-          if (conversationPanelRef.current?.isCollapsed()) {
-            conversationPanelRef.current.expand();
+          if (chatPanelRef.current?.isCollapsed()) {
+            chatPanelRef.current.expand();
           }
-          conversationPanelRef.current?.resize(sizes.conversation);
+          chatPanelRef.current?.resize(sizes.chat);
         }
         draftPoolPanelRef.current?.resize(sizes.draftPool);
         timelinePanelRef.current?.resize(sizes.timeline);
@@ -59,36 +58,44 @@ export default function Home() {
   );
 
   const handleAddToDraftPool = useCallback(
-    (item: DraftItem) => {
-      setDraftItems((prev) => [...prev, item]);
-      // Auto-transition to collection mode if we have 2+ items
-      if (draftItems.length + 1 >= 2 && mode === 'ideation') {
+    (item: TripCard) => {
+      setTripCards((prev) => [...prev, item]);
+      // Auto-transition to collection mode if we have 2+ draft items
+      const draftCount = tripCards.filter((card) => card.status === 'draft').length;
+      if (draftCount + 1 >= 2 && mode === 'ideation') {
         transitionToMode('collection');
       }
     },
-    [draftItems.length, mode, transitionToMode],
+    [tripCards, mode, transitionToMode],
   );
 
   const handleRemoveFromDraftPool = useCallback((id: string) => {
-    setDraftItems((prev) => prev.filter((item) => item.id !== id));
+    setTripCards((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
   const handleAddToTimeline = useCallback(
-    (item: DraftItem, time: string, date: string) => {
-      const timelineItem: TimelineItem = {
-        id: `timeline-${Date.now()}`,
-        draftId: item.id,
-        time,
-        date,
-        title: item.title,
+    (item: TripCard, startTime: Date) => {
+      // Create a new scheduled card from the draft card
+      const defaultDuration = 90; // Default 1.5 hours
+      const endTime = new Date(startTime);
+      endTime.setMinutes(endTime.getMinutes() + defaultDuration);
+
+      const scheduledCard: TripCard = {
+        ...item,
+        id: `trip-card-${Date.now()}`,
+        startTime,
+        endTime,
+        status: 'scheduled',
+        updatedAt: new Date(),
       };
-      setTimelineItems((prev) => [...prev, timelineItem]);
-      // Transition to arrangement mode when first item is added
-      if (timelineItems.length === 0 && mode !== 'arrangement') {
+      setTripCards((prev) => [...prev, scheduledCard]);
+      // Transition to arrangement mode when first scheduled item is added
+      const scheduledCount = tripCards.filter((card) => card.status === 'scheduled').length;
+      if (scheduledCount === 0 && mode !== 'arrangement') {
         transitionToMode('arrangement');
       }
     },
-    [timelineItems.length, mode, transitionToMode],
+    [tripCards, mode, transitionToMode],
   );
 
   const handleFocusInput = useCallback(() => {
@@ -119,10 +126,10 @@ export default function Home() {
   useEffect(() => {
     const sizes = MODE_SIZES[mode];
     setTimeout(() => {
-      if (sizes.conversation === 0 && conversationPanelRef.current) {
-        conversationPanelRef.current.collapse();
+      if (sizes.chat === 0 && chatPanelRef.current) {
+        chatPanelRef.current.collapse();
       } else {
-        conversationPanelRef.current?.resize(sizes.conversation);
+        chatPanelRef.current?.resize(sizes.chat);
       }
       draftPoolPanelRef.current?.resize(sizes.draftPool);
       timelinePanelRef.current?.resize(sizes.timeline);
@@ -134,23 +141,24 @@ export default function Home() {
   return (
     <div className="bg-background h-screen w-screen touch-none overflow-hidden">
       <PanelGroup direction="vertical" className="h-full w-full">
-        {/* Conversation Panel */}
+        {/* Chat Panel */}
         <Panel
-          ref={conversationPanelRef}
-          defaultSize={sizes.conversation}
+          ref={chatPanelRef}
+          defaultSize={sizes.chat}
           minSize={mode === 'arrangement' ? 0 : mode === 'ideation' ? 30 : 0}
           maxSize={mode === 'arrangement' ? 0 : mode === 'ideation' ? 100 : 50}
           collapsible={mode === 'arrangement'}
           className={`transition-all duration-300 ease-in-out ${mode === 'arrangement' ? 'hidden' : ''}`}
         >
-          <ConversationPanel
+          <ChatPanel
             messages={messages}
             onAddMessage={(content) => {
-              const newMessage: ConversationMessage = {
+              const newMessage: Message = {
                 id: `msg-${Date.now()}`,
-                role: 'user',
+                chatId: 'chat-1',
+                senderRole: 'user',
                 content,
-                timestamp: new Date(),
+                createdAt: new Date(),
               };
               setMessages((prev) => [...prev, newMessage]);
             }}
@@ -170,8 +178,8 @@ export default function Home() {
           maxSize={mode === 'collection' ? 80 : 40}
           className="transition-all duration-300 ease-in-out"
         >
-          <DraftPool
-            items={draftItems}
+          <TripCardPool
+            items={tripCards}
             onRemove={handleRemoveFromDraftPool}
             onScroll={handleDraftPoolScroll}
             onStartDrag={handleStartDrag}
@@ -190,11 +198,11 @@ export default function Home() {
           className="transition-all duration-300 ease-in-out"
         >
           <Timeline
-            items={timelineItems}
-            draftItems={draftItems}
+            items={tripCards}
+            draftItems={tripCards}
             mode={mode}
             onShowConversation={handleShowConversation}
-            onUpdateTimeline={setTimelineItems}
+            onUpdateTimeline={setTripCards}
             onStartArrangement={() => transitionToMode('arrangement')}
             onJustAdded={(item) => {
               // Optional: Add any post-add logic here (e.g., analytics, animations)
