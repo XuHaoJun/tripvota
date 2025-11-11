@@ -12,10 +12,79 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check_changes:
+    name: Check Changed Files
+    runs-on: ubuntu-latest
+    outputs:
+      typescript_changed: ${{ steps.changes.outputs.typescript }}
+      rust_changed: ${{ steps.changes.outputs.rust }}
+      share_changed: ${{ steps.changes.outputs.share }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_REF="${{ github.base_ref || 'main' }}"
+            if ! git show-ref --verify --quiet refs/remotes/origin/$BASE_REF; then
+              if git show-ref --verify --quiet refs/remotes/origin/main; then
+                BASE_REF="main"
+              else
+                BASE_REF="master"
+              fi
+            fi
+            BASE="origin/$BASE_REF"
+          else
+            # For push events, compare against previous commit
+            # If HEAD~1 doesn't exist (first commit), force all checks
+            if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+              BASE="HEAD~1"
+            else
+              # First commit - force all checks
+              echo "typescript=true" >> $GITHUB_OUTPUT
+              echo "rust=true" >> $GITHUB_OUTPUT
+              echo "share=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          fi
+
+          TYPESCRIPT_CHANGED="false"
+          RUST_CHANGED="false"
+          SHARE_CHANGED="false"
+
+          CHANGED_FILES=$(git diff --name-only $BASE HEAD || echo "")
+
+          if echo "$CHANGED_FILES" | grep -q "^typescript-workspace/"; then
+            TYPESCRIPT_CHANGED="true"
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "^rust-workspace/"; then
+            RUST_CHANGED="true"
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "^share/"; then
+            SHARE_CHANGED="true"
+          fi
+
+          # CI/CD changes force both workspaces to run
+          if echo "$CHANGED_FILES" | grep -q "^\.github/workflows/"; then
+            TYPESCRIPT_CHANGED="true"
+            RUST_CHANGED="true"
+          fi
+
+          echo "typescript=$TYPESCRIPT_CHANGED" >> $GITHUB_OUTPUT
+          echo "rust=$RUST_CHANGED" >> $GITHUB_OUTPUT
+          echo "share=$SHARE_CHANGED" >> $GITHUB_OUTPUT
+
   ts_lint:
     name: TypeScript Lint (all)
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: check_changes
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (needs.check_changes.outputs.typescript_changed == 'true' || needs.check_changes.outputs.share_changed == 'true')
     defaults:
       run:
         working-directory: typescript-workspace
@@ -56,7 +125,8 @@ jobs:
   ts_test:
     name: TypeScript Test (all)
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: check_changes
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (needs.check_changes.outputs.typescript_changed == 'true' || needs.check_changes.outputs.share_changed == 'true')
     defaults:
       run:
         working-directory: typescript-workspace
@@ -97,7 +167,8 @@ jobs:
   ts_test_changed:
     name: TypeScript Test (changed only)
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master')
+    needs: check_changes
+    if: (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master')) && (needs.check_changes.outputs.typescript_changed == 'true' || needs.check_changes.outputs.share_changed == 'true')
     defaults:
       run:
         working-directory: typescript-workspace
@@ -138,7 +209,8 @@ jobs:
   ts_lint_changed:
     name: TypeScript Lint (changed only)
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master')
+    needs: check_changes
+    if: (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master')) && (needs.check_changes.outputs.typescript_changed == 'true' || needs.check_changes.outputs.share_changed == 'true')
     defaults:
       run:
         working-directory: typescript-workspace
@@ -179,7 +251,8 @@ jobs:
   rust_lint:
     name: Rust Lint (all)
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: check_changes
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (needs.check_changes.outputs.rust_changed == 'true' || needs.check_changes.outputs.share_changed == 'true')
     defaults:
       run:
         working-directory: rust-workspace
@@ -208,7 +281,8 @@ jobs:
   rust_test:
     name: Rust Test (all)
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: check_changes
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (needs.check_changes.outputs.rust_changed == 'true' || needs.check_changes.outputs.share_changed == 'true')
     defaults:
       run:
         working-directory: rust-workspace
@@ -232,7 +306,8 @@ jobs:
   rust_lint_changed:
     name: Rust Lint (changed only)
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master')
+    needs: check_changes
+    if: (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master')) && (needs.check_changes.outputs.rust_changed == 'true' || needs.check_changes.outputs.share_changed == 'true')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -258,7 +333,8 @@ jobs:
   rust_test_changed:
     name: Rust Test (changed only)
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master')
+    needs: check_changes
+    if: (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master')) && (needs.check_changes.outputs.rust_changed == 'true' || needs.check_changes.outputs.share_changed == 'true')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
