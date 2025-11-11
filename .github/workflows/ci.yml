@@ -49,6 +49,43 @@ jobs:
       - name: Lint (workspace-wide)
         run: pnpm turbo lint
 
+  ts_test:
+    name: TypeScript Test (all)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    defaults:
+      run:
+        working-directory: typescript-workspace
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Test (workspace-wide)
+        run: pnpm turbo test
+
   ts_test_changed:
     name: TypeScript Test (changed only)
     runs-on: ubuntu-latest
@@ -159,6 +196,30 @@ jobs:
 
       - name: clippy (deny warnings)
         run: cargo clippy --workspace --all-targets -- -D warnings
+
+  rust_test:
+    name: Rust Test (all)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    defaults:
+      run:
+        working-directory: rust-workspace
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: rust-workspace -> target
+
+      - name: Test (workspace-wide)
+        run: cargo test --workspace
 
   rust_lint_changed:
     name: Rust Lint (changed only)
