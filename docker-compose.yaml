@@ -2,7 +2,9 @@ name: tripvota
 
 services:
   db:
-    image: postgis/postgis:18-3.6-alpine
+    platform: linux/amd64
+    image: xuhaojun/postgis-pgvector:18-3.6
+    # image: postgis/postgis:18-3.6-alpine
     # image: postgres:18.0-alpine3.22
     restart: always
     # set shared memory limit when using docker compose
