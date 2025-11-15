@@ -2,6 +2,10 @@
 
 A collaborative travel planning system that combines the scheduling power of Google Calendar with voting capabilities, designed for groups of friends planning short-term domestic trips (weekends and holidays).
 
+## 🚀 Deploy
+
+[![Deploy frontend with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/XuHaoJun/tripvota&root-directory=typescript-workspace/apps/web)
+
 ## 🎯 Core Value Proposition
 
 TripVota transforms travel planning from a tedious coordination task into an engaging, collaborative experience. Unlike traditional planning tools that rely on back-and-forth messaging and scattered information, TripVota provides:
@@ -14,12 +18,14 @@ TripVota transforms travel planning from a tedious coordination task into an eng
 ## ✨ Key Features
 
 ### 1. Real-Time Collaborative Editing
+
 - Simultaneous multi-user editing without conflicts
 - Visual indicators showing who's editing what (cursors, avatars)
 - Instant synchronization across all devices
 - Single source of truth for all trip information
 
 ### 2. AI-Driven Planning
+
 - Conversational interface for brainstorming ideas
 - Automatic generation of itinerary options based on:
   - Budget constraints
@@ -31,18 +37,21 @@ TripVota transforms travel planning from a tedious coordination task into an eng
 ### 3. Three-Stage Planning Flow
 
 #### Stage 1: 发想 (Brainstorming) - "What do we want to do?"
+
 - Chat-style interface for group discussion
 - AI assistant to generate suggestions
 - Natural language input: "I want to go to the beach" or "@AI generate options for a half-day trip from Taipei Station"
 - Options from AI include quick-add buttons
 
 #### Stage 2: 收集 (Collection) - "What ideas do we have?"
+
 - Draft pool displaying all collected ideas as cards
 - Horizontal scrolling gallery
 - Easy management: add, remove, or categorize ideas
 - Visual "materials library" before arrangement
 
 #### Stage 3: 安排 (Arrangement) - "How do we schedule it?"
+
 - Vertical timeline visualization
 - Drag-and-drop from draft pool to timeline
 - Smart time slot suggestions
@@ -50,6 +59,7 @@ TripVota transforms travel planning from a tedious coordination task into an eng
 - Detailed editing via bottom sheet modal
 
 ### 4. Voting & Decision Making
+
 - Inline voting on conflicting options
 - Transparent decision process with comments
 - Context-aware voting tied to specific time slots or activities
@@ -60,15 +70,16 @@ TripVota transforms travel planning from a tedious coordination task into an eng
 
 The interface adapts based on the user's current task, ensuring focus and clarity:
 
-| Mode | Primary Focus | Screen Ratio | User State |
-|------|---------------|--------------|------------|
-| **Brainstorming** | Conversation area | 70%+ | Exploration & input |
-| **Collection** | Draft pool | 60% | Browsing & selection |
-| **Arrangement** | Timeline | 80%+ | Focused scheduling |
+| Mode              | Primary Focus     | Screen Ratio | User State           |
+| ----------------- | ----------------- | ------------ | -------------------- |
+| **Brainstorming** | Conversation area | 70%+         | Exploration & input  |
+| **Collection**    | Draft pool        | 60%          | Browsing & selection |
+| **Arrangement**   | Timeline          | 80%+         | Focused scheduling   |
 
 ### Key Interactions
 
 #### Draft Pool → Timeline Transition
+
 - **Primary**: Drag-and-drop with smart snap-to-time
   - Long-press card from draft pool
   - Drag to timeline position
@@ -80,6 +91,7 @@ The interface adapts based on the user's current task, ensuring focus and clarit
   - One-tap selection
 
 #### Timeline Editing
+
 - Tap any timeline block to open bottom sheet modal
 - Edit details:
   - Time (start/end)
@@ -116,11 +128,13 @@ Finalize → Optimize with AI → Share Completed Itinerary
 ## 👥 Target Users
 
 **Primary**: Groups of 3-5 friends planning:
+
 - Weekend trips
 - Holiday short getaways
 - Domestic travel within the same country/region
 
 **User Needs**:
+
 - Quick decision-making (not overly complex planning)
 - Shared ownership of the trip
 - Visual and intuitive planning process
@@ -145,18 +159,21 @@ Finalize → Optimize with AI → Share Completed Itinerary
 ## 🚀 Development Phases
 
 ### Phase 1 (MVP)
+
 - ✅ AI conversation interface for generating options
 - ✅ Draft pool collection
 - ✅ Basic drag-and-drop to timeline
 - ✅ Simple timeline visualization
 
 ### Phase 2
+
 - [ ] Real-time collaborative editing
 - [ ] Conflict detection and voting
 - [ ] Transportation planning
 - [ ] Budget tracking
 
 ### Phase 3
+
 - [ ] AI optimization suggestions
 - [ ] Advanced permissions (view-only, editor)
 - [ ] Export and sharing features
