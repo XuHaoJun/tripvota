@@ -30,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased`}>
-        <RpcClientProvider>
+        <RpcClientProvider apiBaseUrl={process.env.NEXT_PUBLIC_API_BASE_URL || 'https://localhost:3030'}>
           <Providers>{children}</Providers>
         </RpcClientProvider>
       </body>
