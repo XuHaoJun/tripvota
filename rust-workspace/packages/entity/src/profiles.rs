@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
+    #[sea_orm(unique_key = "idx_profiles_third_login")]
+    pub realm_id: Uuid,
     #[sea_orm(column_type = "Text")]
     pub username: String,
     #[sea_orm(column_type = "Text")]
@@ -47,6 +49,14 @@ pub enum Relation {
     ChatParticipants,
     #[sea_orm(has_many = "super::chats::Entity")]
     Chats,
+    #[sea_orm(
+        belongs_to = "super::realms::Entity",
+        from = "Column::RealmId",
+        to = "super::realms::Column::Id",
+        on_update = "NoAction",
+        on_delete = "Cascade"
+    )]
+    Realms,
     #[sea_orm(has_many = "super::trip_card_rich_text::Entity")]
     TripCardRichText,
     #[sea_orm(has_many = "super::trip_card_votes::Entity")]
@@ -68,6 +78,12 @@ impl Related<super::channel_bridge::Entity> for Entity {
 impl Related<super::chat_participants::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ChatParticipants.def()
+    }
+}
+
+impl Related<super::realms::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Realms.def()
     }
 }
 

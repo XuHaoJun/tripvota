@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
+    pub realm_id: Uuid,
     #[sea_orm(column_type = "Text")]
     pub name: String,
     #[sea_orm(column_type = "Text")]
@@ -46,6 +47,20 @@ pub enum Relation {
         on_delete = "NoAction"
     )]
     ChannelBridge1,
+    #[sea_orm(
+        belongs_to = "super::realms::Entity",
+        from = "Column::RealmId",
+        to = "super::realms::Column::Id",
+        on_update = "NoAction",
+        on_delete = "Cascade"
+    )]
+    Realms,
+}
+
+impl Related<super::realms::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Realms.def()
+    }
 }
 
 impl ActiveModelBehavior for ActiveModel {}

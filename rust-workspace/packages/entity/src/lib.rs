@@ -2,12 +2,19 @@
 
 pub mod prelude;
 
+pub mod account_realm_roles;
+pub mod accounts;
 pub mod bots;
 pub mod channel_bridge;
 pub mod chat_participants;
 pub mod chats;
+pub mod federated_identities;
+pub mod identity_providers;
 pub mod messages;
+pub mod permissions;
 pub mod profiles;
+pub mod realms;
+pub mod roles;
 pub mod spatial_ref_sys;
 pub mod trip_card_rich_text;
 pub mod trip_card_votes;

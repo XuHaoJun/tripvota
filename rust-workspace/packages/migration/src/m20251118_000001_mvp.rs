@@ -21,6 +21,628 @@ impl MigrationTrait for Migration {
         // These need to be executed manually or via a workaround
         exec_raw_sql(manager, "CREATE EXTENSION IF NOT EXISTS postgis").await?;
 
+        // ============================================================================
+        // Account and Realm Management
+        // ============================================================================
+
+        // Create accounts table
+        manager
+            .create_table(
+                Table::create()
+                    .table(Accounts::Table)
+                    .col(
+                        ColumnDef::new(Accounts::Id)
+                            .uuid()
+                            .not_null()
+                            .default(Expr::cust("uuidv7()"))
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(Accounts::Username)
+                            .text()
+                            .not_null()
+                            .unique_key(),
+                    )
+                    .col(
+                        ColumnDef::new(Accounts::Email)
+                            .text()
+                            .not_null()
+                            .unique_key(),
+                    )
+                    .col(
+                        ColumnDef::new(Accounts::EmailVerified)
+                            .boolean()
+                            .not_null()
+                            .default(false),
+                    )
+                    .col(ColumnDef::new(Accounts::PasswordHash).text())
+                    .col(
+                        ColumnDef::new(Accounts::IsActive)
+                            .boolean()
+                            .not_null()
+                            .default(true),
+                    )
+                    .col(
+                        ColumnDef::new(Accounts::CreatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::cust("now()")),
+                    )
+                    .col(
+                        ColumnDef::new(Accounts::UpdatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::cust("now()")),
+                    )
+                    .col(ColumnDef::new(Accounts::LastLoginAt).timestamp_with_time_zone())
+                    .col(ColumnDef::new(Accounts::Metadata).json_binary())
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create realms table
+        manager
+            .create_table(
+                Table::create()
+                    .table(Realms::Table)
+                    .col(
+                        ColumnDef::new(Realms::Id)
+                            .uuid()
+                            .not_null()
+                            .default(Expr::cust("uuidv7()"))
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(Realms::Name).text().not_null().unique_key())
+                    .col(ColumnDef::new(Realms::DisplayName).text().not_null())
+                    .col(ColumnDef::new(Realms::Description).text())
+                    .col(
+                        ColumnDef::new(Realms::IsActive)
+                            .boolean()
+                            .not_null()
+                            .default(true),
+                    )
+                    .col(ColumnDef::new(Realms::CreatedBy).uuid().not_null())
+                    .col(
+                        ColumnDef::new(Realms::CreatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::cust("now()")),
+                    )
+                    .col(
+                        ColumnDef::new(Realms::UpdatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::cust("now()")),
+                    )
+                    .col(ColumnDef::new(Realms::Metadata).json_binary())
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create foreign key from realms to accounts
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_realms_created_by")
+                    .from(Realms::Table, Realms::CreatedBy)
+                    .to(Accounts::Table, Accounts::Id)
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create identity_providers table
+        manager
+            .create_table(
+                Table::create()
+                    .table(IdentityProviders::Table)
+                    .col(
+                        ColumnDef::new(IdentityProviders::Id)
+                            .uuid()
+                            .not_null()
+                            .default(Expr::cust("uuidv7()"))
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(IdentityProviders::RealmId).uuid().not_null())
+                    .col(
+                        ColumnDef::new(IdentityProviders::ProviderType)
+                            .text()
+                            .not_null()
+                            .check(Expr::col(IdentityProviders::ProviderType).is_in(vec![
+                                "local", "google", "line", "github", "facebook", "apple", "saml",
+                                "oidc",
+                            ])),
+                    )
+                    .col(ColumnDef::new(IdentityProviders::Alias).text().not_null())
+                    .col(
+                        ColumnDef::new(IdentityProviders::DisplayName)
+                            .text()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(IdentityProviders::IsEnabled)
+                            .boolean()
+                            .not_null()
+                            .default(true),
+                    )
+                    .col(ColumnDef::new(IdentityProviders::ClientId).text())
+                    .col(ColumnDef::new(IdentityProviders::ClientSecret).text())
+                    .col(ColumnDef::new(IdentityProviders::AuthorizationUrl).text())
+                    .col(ColumnDef::new(IdentityProviders::TokenUrl).text())
+                    .col(ColumnDef::new(IdentityProviders::UserInfoUrl).text())
+                    .col(ColumnDef::new(IdentityProviders::SamlEntityId).text())
+                    .col(ColumnDef::new(IdentityProviders::SamlSsoUrl).text())
+                    .col(ColumnDef::new(IdentityProviders::SamlCertificate).text())
+                    .col(
+                        ColumnDef::new(IdentityProviders::CreatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::cust("now()")),
+                    )
+                    .col(
+                        ColumnDef::new(IdentityProviders::UpdatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::cust("now()")),
+                    )
+                    .col(ColumnDef::new(IdentityProviders::Metadata).json_binary())
+                    .to_owned(),
+            )
+            .await?;
+
+        // Add default_scopes column (TEXT[] array) using raw SQL
+        exec_raw_sql(
+            manager,
+            "ALTER TABLE identity_providers ADD COLUMN default_scopes TEXT[]",
+        )
+        .await?;
+
+        // Create foreign key from identity_providers to realms
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_identity_providers_realm")
+                    .from(IdentityProviders::Table, IdentityProviders::RealmId)
+                    .to(Realms::Table, Realms::Id)
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create unique constraint on identity_providers
+        manager
+            .create_index(
+                Index::create()
+                    .name("uq_identity_providers_realm_alias")
+                    .table(IdentityProviders::Table)
+                    .unique()
+                    .col(IdentityProviders::RealmId)
+                    .col(IdentityProviders::Alias)
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create federated_identities table
+        manager
+            .create_table(
+                Table::create()
+                    .table(FederatedIdentities::Table)
+                    .col(
+                        ColumnDef::new(FederatedIdentities::AccountId)
+                            .uuid()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(FederatedIdentities::IdentityProviderId)
+                            .uuid()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(FederatedIdentities::ExternalUserId)
+                            .text()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(FederatedIdentities::ExternalUsername).text())
+                    .col(ColumnDef::new(FederatedIdentities::AccessToken).text())
+                    .col(ColumnDef::new(FederatedIdentities::RefreshToken).text())
+                    .col(
+                        ColumnDef::new(FederatedIdentities::TokenExpiry).timestamp_with_time_zone(),
+                    )
+                    .col(
+                        ColumnDef::new(FederatedIdentities::FirstLoginAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::cust("now()")),
+                    )
+                    .col(
+                        ColumnDef::new(FederatedIdentities::LastLoginAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::cust("now()")),
+                    )
+                    .col(ColumnDef::new(FederatedIdentities::Metadata).json_binary())
+                    .primary_key(
+                        Index::create()
+                            .name("pk_federated_identities")
+                            .col(FederatedIdentities::AccountId)
+                            .col(FederatedIdentities::IdentityProviderId),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create foreign keys for federated_identities
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_federated_identities_account")
+                    .from(FederatedIdentities::Table, FederatedIdentities::AccountId)
+                    .to(Accounts::Table, Accounts::Id)
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_federated_identities_provider")
+                    .from(
+                        FederatedIdentities::Table,
+                        FederatedIdentities::IdentityProviderId,
+                    )
+                    .to(IdentityProviders::Table, IdentityProviders::Id)
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create unique constraint on federated_identities
+        manager
+            .create_index(
+                Index::create()
+                    .name("uq_federated_identities_provider_user")
+                    .table(FederatedIdentities::Table)
+                    .unique()
+                    .col(FederatedIdentities::IdentityProviderId)
+                    .col(FederatedIdentities::ExternalUserId)
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create roles table
+        manager
+            .create_table(
+                Table::create()
+                    .table(Roles::Table)
+                    .col(
+                        ColumnDef::new(Roles::Id)
+                            .uuid()
+                            .not_null()
+                            .default(Expr::cust("uuidv7()"))
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(Roles::RealmId).uuid().not_null())
+                    .col(ColumnDef::new(Roles::Name).text().not_null())
+                    .col(ColumnDef::new(Roles::Description).text())
+                    .col(
+                        ColumnDef::new(Roles::CreatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::cust("now()")),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create foreign key from roles to realms
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_roles_realm")
+                    .from(Roles::Table, Roles::RealmId)
+                    .to(Realms::Table, Realms::Id)
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create unique constraint on roles
+        manager
+            .create_index(
+                Index::create()
+                    .name("uq_roles_realm_name")
+                    .table(Roles::Table)
+                    .unique()
+                    .col(Roles::RealmId)
+                    .col(Roles::Name)
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create account_realm_roles table
+        manager
+            .create_table(
+                Table::create()
+                    .table(AccountRealmRoles::Table)
+                    .col(
+                        ColumnDef::new(AccountRealmRoles::AccountId)
+                            .uuid()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(AccountRealmRoles::RealmId).uuid().not_null())
+                    .col(ColumnDef::new(AccountRealmRoles::RoleId).uuid().not_null())
+                    .col(
+                        ColumnDef::new(AccountRealmRoles::GrantedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::cust("now()")),
+                    )
+                    .col(ColumnDef::new(AccountRealmRoles::GrantedBy).uuid())
+                    .primary_key(
+                        Index::create()
+                            .name("pk_account_realm_roles")
+                            .col(AccountRealmRoles::AccountId)
+                            .col(AccountRealmRoles::RealmId)
+                            .col(AccountRealmRoles::RoleId),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create foreign keys for account_realm_roles
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_account_realm_roles_account")
+                    .from(AccountRealmRoles::Table, AccountRealmRoles::AccountId)
+                    .to(Accounts::Table, Accounts::Id)
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_account_realm_roles_realm")
+                    .from(AccountRealmRoles::Table, AccountRealmRoles::RealmId)
+                    .to(Realms::Table, Realms::Id)
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_account_realm_roles_role")
+                    .from(AccountRealmRoles::Table, AccountRealmRoles::RoleId)
+                    .to(Roles::Table, Roles::Id)
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_account_realm_roles_granted_by")
+                    .from(AccountRealmRoles::Table, AccountRealmRoles::GrantedBy)
+                    .to(Accounts::Table, Accounts::Id)
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create permissions table
+        manager
+            .create_table(
+                Table::create()
+                    .table(Permissions::Table)
+                    .col(
+                        ColumnDef::new(Permissions::Id)
+                            .uuid()
+                            .not_null()
+                            .default(Expr::cust("uuidv7()"))
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(Permissions::RealmId).uuid().not_null())
+                    .col(ColumnDef::new(Permissions::RoleId).uuid().not_null())
+                    .col(
+                        ColumnDef::new(Permissions::ResourceType)
+                            .text()
+                            .not_null()
+                            .check(
+                                Expr::col(Permissions::ResourceType)
+                                    .is_in(vec!["bot", "trip", "profile", "chat", "realm"]),
+                            ),
+                    )
+                    .col(
+                        ColumnDef::new(Permissions::CreatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::cust("now()")),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        // Add actions column (TEXT[] array) using raw SQL
+        exec_raw_sql(
+            manager,
+            "ALTER TABLE permissions ADD COLUMN actions TEXT[] NOT NULL",
+        )
+        .await?;
+
+        // Create foreign keys for permissions
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_permissions_realm")
+                    .from(Permissions::Table, Permissions::RealmId)
+                    .to(Realms::Table, Realms::Id)
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_permissions_role")
+                    .from(Permissions::Table, Permissions::RoleId)
+                    .to(Roles::Table, Roles::Id)
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create unique constraint on permissions
+        manager
+            .create_index(
+                Index::create()
+                    .name("uq_permissions_realm_role_resource")
+                    .table(Permissions::Table)
+                    .unique()
+                    .col(Permissions::RealmId)
+                    .col(Permissions::RoleId)
+                    .col(Permissions::ResourceType)
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create indexes for accounts and realms
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_accounts_email")
+                    .table(Accounts::Table)
+                    .col(Accounts::Email)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_accounts_username")
+                    .table(Accounts::Table)
+                    .col(Accounts::Username)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_accounts_last_login")
+                    .table(Accounts::Table)
+                    .col(Accounts::LastLoginAt)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_identity_providers_realm")
+                    .table(IdentityProviders::Table)
+                    .col(IdentityProviders::RealmId)
+                    .to_owned(),
+            )
+            .await?;
+
+        exec_raw_sql(
+            manager,
+            "CREATE INDEX idx_identity_providers_enabled ON identity_providers (realm_id, is_enabled) WHERE is_enabled = true",
+        )
+        .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_federated_identities_account")
+                    .table(FederatedIdentities::Table)
+                    .col(FederatedIdentities::AccountId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_federated_identities_provider")
+                    .table(FederatedIdentities::Table)
+                    .col(FederatedIdentities::IdentityProviderId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_federated_identities_external_user")
+                    .table(FederatedIdentities::Table)
+                    .col(FederatedIdentities::IdentityProviderId)
+                    .col(FederatedIdentities::ExternalUserId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_realms_created_by")
+                    .table(Realms::Table)
+                    .col(Realms::CreatedBy)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_roles_realm")
+                    .table(Roles::Table)
+                    .col(Roles::RealmId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_account_realm_roles_account")
+                    .table(AccountRealmRoles::Table)
+                    .col(AccountRealmRoles::AccountId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_account_realm_roles_realm")
+                    .table(AccountRealmRoles::Table)
+                    .col(AccountRealmRoles::RealmId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_permissions_realm_role")
+                    .table(Permissions::Table)
+                    .col(Permissions::RealmId)
+                    .col(Permissions::RoleId)
+                    .to_owned(),
+            )
+            .await?;
+
+        // ============================================================================
+        // Channel Bridge Tables
+        // ============================================================================
+
         // Create channel_bridge table
         manager
             .create_table(
@@ -110,6 +732,7 @@ impl MigrationTrait for Migration {
                             .default(Expr::cust("uuidv7()"))
                             .primary_key(),
                     )
+                    .col(ColumnDef::new(Bots::RealmId).uuid().not_null())
                     .col(ColumnDef::new(Bots::Name).text().not_null())
                     .col(ColumnDef::new(Bots::DisplayName).text().not_null())
                     .col(ColumnDef::new(Bots::Description).text())
@@ -148,7 +771,18 @@ impl MigrationTrait for Migration {
         )
         .await?;
 
-        // Create foreign keys from bots to channel_bridge
+        // Create foreign keys from bots to realms and channel_bridge
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_bots_realm")
+                    .from(Bots::Table, Bots::RealmId)
+                    .to(Realms::Table, Realms::Id)
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .to_owned(),
+            )
+            .await?;
+
         manager
             .create_foreign_key(
                 ForeignKey::create()
@@ -170,6 +804,16 @@ impl MigrationTrait for Migration {
             .await?;
 
         // Create indexes on bots (with WHERE clauses require raw SQL)
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_bots_realm")
+                    .table(Bots::Table)
+                    .col(Bots::RealmId)
+                    .to_owned(),
+            )
+            .await?;
+
         exec_raw_sql(
             manager,
             "CREATE INDEX idx_bots_api_bridge ON bots (api_channel_bridge_id) WHERE api_channel_bridge_id IS NOT NULL",
@@ -200,6 +844,7 @@ impl MigrationTrait for Migration {
                             .default(Expr::cust("uuidv7()"))
                             .primary_key(),
                     )
+                    .col(ColumnDef::new(Profiles::RealmId).uuid().not_null())
                     .col(ColumnDef::new(Profiles::Username).text().not_null())
                     .col(ColumnDef::new(Profiles::Email).text().not_null())
                     .col(ColumnDef::new(Profiles::Phone).text().not_null())
@@ -217,7 +862,18 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Create foreign key from profiles to channel_bridge
+        // Create foreign keys from profiles to realms and channel_bridge
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_profiles_realm")
+                    .from(Profiles::Table, Profiles::RealmId)
+                    .to(Realms::Table, Realms::Id)
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .to_owned(),
+            )
+            .await?;
+
         manager
             .create_foreign_key(
                 ForeignKey::create()
@@ -228,8 +884,19 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        // Create indexes on profiles
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_profiles_realm")
+                    .table(Profiles::Table)
+                    .col(Profiles::RealmId)
+                    .to_owned(),
+            )
+            .await?;
+
         // Create unique index on profiles with WHERE clause (requires raw SQL)
-        exec_raw_sql(manager, "CREATE UNIQUE INDEX idx_profiles_third_login ON profiles (third_provider_type, third_id) WHERE third_id IS NOT NULL AND third_provider_type IS NOT NULL").await?;
+        exec_raw_sql(manager, "CREATE UNIQUE INDEX idx_profiles_third_login ON profiles (realm_id, third_provider_type, third_id) WHERE third_id IS NOT NULL AND third_provider_type IS NOT NULL").await?;
 
         // Create trips table
         manager
@@ -243,6 +910,7 @@ impl MigrationTrait for Migration {
                             .default(Expr::cust("uuidv7()"))
                             .primary_key(),
                     )
+                    .col(ColumnDef::new(Trips::RealmId).uuid().not_null())
                     .col(ColumnDef::new(Trips::CreatedBy).uuid().not_null())
                     .col(ColumnDef::new(Trips::Title).text().not_null())
                     .col(ColumnDef::new(Trips::Description).text())
@@ -279,7 +947,18 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        // Create foreign key from trips to profiles
+        // Create foreign keys from trips to realms and profiles
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_trips_realm")
+                    .from(Trips::Table, Trips::RealmId)
+                    .to(Realms::Table, Realms::Id)
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .to_owned(),
+            )
+            .await?;
+
         manager
             .create_foreign_key(
                 ForeignKey::create()
@@ -291,6 +970,16 @@ impl MigrationTrait for Migration {
             .await?;
 
         // Create indexes on trips
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_trips_realm")
+                    .table(Trips::Table)
+                    .col(Trips::RealmId)
+                    .to_owned(),
+            )
+            .await?;
+
         manager
             .create_index(
                 Index::create()
@@ -850,12 +1539,133 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(Table::drop().table(ChannelBridge::Table).to_owned())
             .await?;
+        manager
+            .drop_table(Table::drop().table(Permissions::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(AccountRealmRoles::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(Roles::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(FederatedIdentities::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(IdentityProviders::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(Realms::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(Accounts::Table).to_owned())
+            .await?;
 
         Ok(())
     }
 }
 
 // Define table names as enums for type safety
+#[derive(DeriveIden)]
+enum Accounts {
+    Table,
+    Id,
+    Username,
+    Email,
+    EmailVerified,
+    PasswordHash,
+    IsActive,
+    CreatedAt,
+    UpdatedAt,
+    LastLoginAt,
+    Metadata,
+}
+
+#[derive(DeriveIden)]
+enum Realms {
+    Table,
+    Id,
+    Name,
+    DisplayName,
+    Description,
+    IsActive,
+    CreatedBy,
+    CreatedAt,
+    UpdatedAt,
+    Metadata,
+}
+
+#[derive(DeriveIden)]
+enum IdentityProviders {
+    Table,
+    Id,
+    RealmId,
+    ProviderType,
+    Alias,
+    DisplayName,
+    IsEnabled,
+    ClientId,
+    ClientSecret,
+    AuthorizationUrl,
+    TokenUrl,
+    UserInfoUrl,
+    SamlEntityId,
+    SamlSsoUrl,
+    SamlCertificate,
+    #[allow(dead_code)] // DefaultScopes column is added via raw SQL (TEXT[] array type)
+    DefaultScopes,
+    CreatedAt,
+    UpdatedAt,
+    Metadata,
+}
+
+#[derive(DeriveIden)]
+enum FederatedIdentities {
+    Table,
+    AccountId,
+    IdentityProviderId,
+    ExternalUserId,
+    ExternalUsername,
+    AccessToken,
+    RefreshToken,
+    TokenExpiry,
+    FirstLoginAt,
+    LastLoginAt,
+    Metadata,
+}
+
+#[derive(DeriveIden)]
+enum Roles {
+    Table,
+    Id,
+    RealmId,
+    Name,
+    Description,
+    CreatedAt,
+}
+
+#[derive(DeriveIden)]
+enum AccountRealmRoles {
+    Table,
+    AccountId,
+    RealmId,
+    RoleId,
+    GrantedAt,
+    GrantedBy,
+}
+
+#[derive(DeriveIden)]
+enum Permissions {
+    Table,
+    Id,
+    RealmId,
+    RoleId,
+    ResourceType,
+    #[allow(dead_code)] // Actions column is added via raw SQL (TEXT[] array type)
+    Actions,
+    CreatedAt,
+}
+
 #[derive(DeriveIden)]
 enum ChannelBridge {
     Table,
@@ -880,6 +1690,7 @@ enum ChannelBridge {
 enum Bots {
     Table,
     Id,
+    RealmId,
     Name,
     DisplayName,
     Description,
@@ -897,6 +1708,7 @@ enum Bots {
 enum Profiles {
     Table,
     Id,
+    RealmId,
     Username,
     Email,
     Phone,
@@ -911,6 +1723,7 @@ enum Profiles {
 enum Trips {
     Table,
     Id,
+    RealmId,
     CreatedBy,
     Title,
     Description,

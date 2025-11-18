@@ -7,6 +7,155 @@
 -- Enable PostGIS extension (if not already enabled)
 -- CREATE EXTENSION IF NOT EXISTS postgis;
 
+-- ============================================================================
+-- Account and Realm Management
+-- ============================================================================
+
+-- System accounts (our platform users who manage realms)
+-- Supports multiple authentication methods via federated identities
+CREATE TABLE accounts (
+    id uuid DEFAULT uuidv7() PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
+    email_verified BOOLEAN NOT NULL DEFAULT false,
+    
+    -- Local password authentication (nullable for federated-only accounts)
+    password_hash TEXT,
+    
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_login_at TIMESTAMPTZ,
+    
+    -- Store additional metadata like preferences, locale, etc.
+    metadata JSONB
+);
+
+-- Identity providers configuration (realm-level)
+-- Defines available authentication methods for each realm (SSO, OAuth, OIDC, SAML, etc.)
+CREATE TABLE identity_providers (
+    id uuid DEFAULT uuidv7() PRIMARY KEY,
+    realm_id uuid NOT NULL REFERENCES realms(id) ON DELETE CASCADE,
+    
+    -- Provider type: 'google', 'line', 'github', 'saml', 'oidc', 'local', etc.
+    provider_type TEXT NOT NULL CHECK (provider_type IN ('local', 'google', 'line', 'github', 'facebook', 'apple', 'saml', 'oidc')),
+    alias TEXT NOT NULL, -- Unique alias for this provider within the realm
+    display_name TEXT NOT NULL,
+    
+    is_enabled BOOLEAN NOT NULL DEFAULT true,
+    
+    -- OAuth/OIDC configuration
+    client_id TEXT,
+    client_secret TEXT,
+    authorization_url TEXT,
+    token_url TEXT,
+    user_info_url TEXT,
+    
+    -- SAML configuration
+    saml_entity_id TEXT,
+    saml_sso_url TEXT,
+    saml_certificate TEXT,
+    
+    -- Default scopes for OAuth/OIDC
+    default_scopes TEXT[],
+    
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    
+    -- Store additional configuration like attribute mappings, etc.
+    metadata JSONB,
+    
+    UNIQUE (realm_id, alias)
+);
+
+-- Federated identities (links accounts to external identity providers)
+-- Allows one account to authenticate through multiple providers
+CREATE TABLE federated_identities (
+    account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    identity_provider_id uuid NOT NULL REFERENCES identity_providers(id) ON DELETE CASCADE,
+    
+    -- External user identifier from the identity provider
+    external_user_id TEXT NOT NULL,
+    external_username TEXT,
+    
+    -- Tokens from OAuth/OIDC providers
+    access_token TEXT,
+    refresh_token TEXT,
+    token_expiry TIMESTAMPTZ,
+    
+    first_login_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_login_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    
+    -- Store additional data from the provider (profile info, claims, etc.)
+    metadata JSONB,
+    
+    PRIMARY KEY (account_id, identity_provider_id),
+    UNIQUE (identity_provider_id, external_user_id)
+);
+
+-- Realms (isolation boundaries for bots, trips, and profiles)
+CREATE TABLE realms (
+    id uuid DEFAULT uuidv7() PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    display_name TEXT NOT NULL,
+    description TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_by uuid NOT NULL REFERENCES accounts(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    metadata JSONB
+);
+
+-- Realm-scoped roles (e.g., 'admin', 'manager', 'viewer', 'bot-manager')
+CREATE TABLE roles (
+    id uuid DEFAULT uuidv7() PRIMARY KEY,
+    realm_id uuid NOT NULL REFERENCES realms(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (realm_id, name)
+);
+
+-- Assign roles to accounts within realms
+CREATE TABLE account_realm_roles (
+    account_id uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    realm_id uuid NOT NULL REFERENCES realms(id) ON DELETE CASCADE,
+    role_id uuid NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    granted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    granted_by uuid REFERENCES accounts(id),
+    PRIMARY KEY (account_id, realm_id, role_id)
+);
+
+-- Permission definitions (resource-level permissions)
+CREATE TABLE permissions (
+    id uuid DEFAULT uuidv7() PRIMARY KEY,
+    realm_id uuid NOT NULL REFERENCES realms(id) ON DELETE CASCADE,
+    role_id uuid NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    resource_type TEXT NOT NULL CHECK (resource_type IN ('bot', 'trip', 'profile', 'chat', 'realm')),
+    actions TEXT[] NOT NULL, -- e.g., ['read', 'write', 'delete', 'manage']
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (realm_id, role_id, resource_type)
+);
+
+-- Indexes for accounts and realms
+CREATE INDEX idx_accounts_email ON accounts (email);
+CREATE INDEX idx_accounts_username ON accounts (username);
+CREATE INDEX idx_accounts_last_login ON accounts (last_login_at);
+CREATE INDEX idx_identity_providers_realm ON identity_providers (realm_id);
+CREATE INDEX idx_identity_providers_enabled ON identity_providers (realm_id, is_enabled) WHERE is_enabled = true;
+CREATE INDEX idx_federated_identities_account ON federated_identities (account_id);
+CREATE INDEX idx_federated_identities_provider ON federated_identities (identity_provider_id);
+CREATE INDEX idx_federated_identities_external_user ON federated_identities (identity_provider_id, external_user_id);
+CREATE INDEX idx_realms_created_by ON realms (created_by);
+CREATE INDEX idx_roles_realm ON roles (realm_id);
+CREATE INDEX idx_account_realm_roles_account ON account_realm_roles (account_id);
+CREATE INDEX idx_account_realm_roles_realm ON account_realm_roles (realm_id);
+CREATE INDEX idx_permissions_realm_role ON permissions (realm_id, role_id);
+
+-- ============================================================================
+-- Channel Bridge Tables
+-- ============================================================================
+
 -- Stores third-party integration credentials for messaging platforms (WeChat, Line, Slack, etc.)
 -- Supports both OAuth and API authentication types
 CREATE TABLE channel_bridge (
@@ -50,6 +199,9 @@ CREATE INDEX idx_channel_bridge_oauth_expiry ON channel_bridge (token_expiry)
 CREATE TABLE bots (
     id uuid DEFAULT uuidv7() PRIMARY KEY,
     
+    -- Realm scoping
+    realm_id uuid NOT NULL REFERENCES realms(id) ON DELETE CASCADE,
+    
     -- Bot identification
     name TEXT NOT NULL,
     display_name TEXT NOT NULL,
@@ -77,13 +229,19 @@ CREATE TABLE bots (
 );
 
 -- Indexes for bots
+CREATE INDEX idx_bots_realm ON bots (realm_id);
 CREATE INDEX idx_bots_api_bridge ON bots (api_channel_bridge_id) WHERE api_channel_bridge_id IS NOT NULL;
 CREATE INDEX idx_bots_oauth_bridge ON bots (oauth_channel_bridge_id) WHERE oauth_channel_bridge_id IS NOT NULL;
 CREATE INDEX idx_bots_active ON bots (is_active) WHERE is_active = true;
 
 -- Stores user information (human or AI bot)
+-- Profiles represent third-party system users (e.g., LINE users), scoped to realms
 CREATE TABLE profiles (
     id uuid DEFAULT uuidv7() PRIMARY KEY,
+    
+    -- Realm scoping
+    realm_id uuid NOT NULL REFERENCES realms(id) ON DELETE CASCADE,
+    
     username TEXT NOT NULL,
     email TEXT NOT NULL,
     phone TEXT NOT NULL,
@@ -95,8 +253,10 @@ CREATE TABLE profiles (
     metadata JSONB
 );
 
--- Index for efficient lookup by third-party login
-CREATE UNIQUE INDEX idx_profiles_third_login ON profiles (third_provider_type, third_id) WHERE third_id IS NOT NULL AND third_provider_type IS NOT NULL;
+-- Indexes for profiles
+CREATE INDEX idx_profiles_realm ON profiles (realm_id);
+-- Index for efficient lookup by third-party login (now realm-scoped)
+CREATE UNIQUE INDEX idx_profiles_third_login ON profiles (realm_id, third_provider_type, third_id) WHERE third_id IS NOT NULL AND third_provider_type IS NOT NULL;
 
 -- ============================================================================
 -- Trip-related Tables
@@ -105,6 +265,7 @@ CREATE UNIQUE INDEX idx_profiles_third_login ON profiles (third_provider_type, t
 -- Stores trip information for short-term travel collaboration
 CREATE TABLE trips (
     id uuid DEFAULT uuidv7() PRIMARY KEY,
+    realm_id uuid NOT NULL REFERENCES realms(id) ON DELETE CASCADE,
     created_by uuid NOT NULL REFERENCES profiles(id),
     title TEXT NOT NULL,
     description TEXT,
@@ -119,6 +280,7 @@ CREATE TABLE trips (
 );
 
 -- Index for efficient lookup of trips by status and dates
+CREATE INDEX idx_trips_realm ON trips (realm_id);
 CREATE INDEX idx_trips_status ON trips (status);
 CREATE INDEX idx_trips_dates ON trips (start_date, end_date);
 
