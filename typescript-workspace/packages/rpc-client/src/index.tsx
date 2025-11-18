@@ -3,20 +3,20 @@
 import { useState } from 'react';
 
 import { TransportProvider } from '@connectrpc/connect-query';
-import { createConnectTransport } from '@connectrpc/connect-web';
+import { ConnectTransportOptions, createConnectTransport } from '@connectrpc/connect-web';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 export function RpcClientProvider({
   children,
-  apiBaseUrl = 'https://localhost:3030',
+  connectTransportOptions,
 }: {
   children: React.ReactNode;
-  apiBaseUrl?: string;
+  connectTransportOptions: ConnectTransportOptions;
 }): React.ReactNode {
   const [queryClient] = useState(() => new QueryClient());
   const [transport] = useState(() =>
     createConnectTransport({
-      baseUrl: apiBaseUrl,
+      ...connectTransportOptions,
     }),
   );
   return (
