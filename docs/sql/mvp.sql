@@ -8,19 +8,78 @@
 -- CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- Stores third-party integration credentials for messaging platforms (WeChat, Line, Slack, etc.)
+-- Supports both OAuth and API authentication types
 CREATE TABLE channel_bridge (
     id uuid DEFAULT uuidv7() PRIMARY KEY,
-    third_id TEXT NOT NULL,
-    third_secret TEXT NOT NULL,
+    
+    -- Bridge type: 'oauth' or 'api'
+    bridge_type TEXT NOT NULL CHECK (bridge_type IN ('oauth', 'api')),
+    
+    -- Provider information
     third_provider_type TEXT NOT NULL CHECK (third_provider_type IN ('line')),
+    
+    -- Common fields for both OAuth and API
+    third_id TEXT NOT NULL, -- Client ID for OAuth, API Key ID for API
+    third_secret TEXT NOT NULL, -- Client Secret for OAuth, API Secret for API
+    
+    -- OAuth-specific fields (NULL for API type)
+    access_token TEXT NULL,
+    refresh_token TEXT NULL,
+    token_expiry TIMESTAMPTZ NULL,
+    oauth_scopes TEXT[] NULL, -- Array of OAuth scopes
+    
+    -- API-specific fields (NULL for OAuth type)
+    api_endpoint TEXT NULL, -- Base API endpoint URL
+    api_version TEXT NULL, -- API version
+    
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    
     -- Store additional metadata like webhook URLs, tokens, etc.
     metadata JSONB
 );
 
 -- Index for efficient lookup by third-party credentials
 CREATE UNIQUE INDEX idx_channel_bridge_third_login ON channel_bridge (third_provider_type, third_id);
+
+-- Index for OAuth token expiry queries
+CREATE INDEX idx_channel_bridge_oauth_expiry ON channel_bridge (token_expiry) 
+    WHERE bridge_type = 'oauth' AND token_expiry IS NOT NULL;
+
+-- Stores bot configuration with both API and OAuth channel bridges
+CREATE TABLE bots (
+    id uuid DEFAULT uuidv7() PRIMARY KEY,
+    
+    -- Bot identification
+    name TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    description TEXT,
+    
+    -- Bot can have both API and OAuth bridges for different purposes
+    -- For example: OAuth for user-facing interactions, API for backend operations
+    api_channel_bridge_id uuid REFERENCES channel_bridge(id),
+    oauth_channel_bridge_id uuid REFERENCES channel_bridge(id),
+    
+    -- Bot status
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    
+    -- Bot capabilities/configuration
+    capabilities TEXT[], -- e.g., ['chat', 'recommendations', 'booking']
+    
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    
+    -- Store additional metadata like model config, prompts, etc.
+    metadata JSONB,
+    
+    -- At least one channel bridge must be configured
+    CHECK (api_channel_bridge_id IS NOT NULL OR oauth_channel_bridge_id IS NOT NULL)
+);
+
+-- Indexes for bots
+CREATE INDEX idx_bots_api_bridge ON bots (api_channel_bridge_id) WHERE api_channel_bridge_id IS NOT NULL;
+CREATE INDEX idx_bots_oauth_bridge ON bots (oauth_channel_bridge_id) WHERE oauth_channel_bridge_id IS NOT NULL;
+CREATE INDEX idx_bots_active ON bots (is_active) WHERE is_active = true;
 
 -- Stores user information (human or AI bot)
 CREATE TABLE profiles (

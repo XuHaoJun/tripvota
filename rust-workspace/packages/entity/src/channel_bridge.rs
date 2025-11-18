@@ -9,16 +9,30 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
+    #[sea_orm(column_type = "Text")]
+    pub bridge_type: String,
+    #[sea_orm(column_type = "Text", unique_key = "idx_channel_bridge_third_login")]
+    pub third_provider_type: String,
     #[sea_orm(column_type = "Text", unique_key = "idx_channel_bridge_third_login")]
     pub third_id: String,
     #[sea_orm(column_type = "Text")]
     pub third_secret: String,
-    #[sea_orm(column_type = "Text", unique_key = "idx_channel_bridge_third_login")]
-    pub third_provider_type: String,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub access_token: Option<String>,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub refresh_token: Option<String>,
+    #[sea_orm(nullable)]
+    pub token_expiry: Option<DateTimeWithTimeZone>,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub api_endpoint: Option<String>,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub api_version: Option<String>,
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
     #[sea_orm(column_type = "JsonBinary", nullable)]
     pub metadata: Option<Json>,
+    #[sea_orm(nullable)]
+    pub oauth_scopes: Option<Vec<String>>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

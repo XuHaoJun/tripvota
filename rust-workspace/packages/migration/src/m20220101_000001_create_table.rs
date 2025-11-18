@@ -33,14 +33,27 @@ impl MigrationTrait for Migration {
                             .default(Expr::cust("uuidv7()"))
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(ChannelBridge::ThirdId).text().not_null())
-                    .col(ColumnDef::new(ChannelBridge::ThirdSecret).text().not_null())
+                    .col(
+                        ColumnDef::new(ChannelBridge::BridgeType)
+                            .text()
+                            .not_null()
+                            .check(
+                                Expr::col(ChannelBridge::BridgeType).is_in(vec!["oauth", "api"]),
+                            ),
+                    )
                     .col(
                         ColumnDef::new(ChannelBridge::ThirdProviderType)
                             .text()
                             .not_null()
                             .check(Expr::col(ChannelBridge::ThirdProviderType).is_in(vec!["line"])),
                     )
+                    .col(ColumnDef::new(ChannelBridge::ThirdId).text().not_null())
+                    .col(ColumnDef::new(ChannelBridge::ThirdSecret).text().not_null())
+                    .col(ColumnDef::new(ChannelBridge::AccessToken).text())
+                    .col(ColumnDef::new(ChannelBridge::RefreshToken).text())
+                    .col(ColumnDef::new(ChannelBridge::TokenExpiry).timestamp_with_time_zone())
+                    .col(ColumnDef::new(ChannelBridge::ApiEndpoint).text())
+                    .col(ColumnDef::new(ChannelBridge::ApiVersion).text())
                     .col(
                         ColumnDef::new(ChannelBridge::CreatedAt)
                             .timestamp_with_time_zone()
@@ -58,6 +71,13 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        // Add oauth_scopes column (TEXT[] array) using raw SQL
+        exec_raw_sql(
+            manager,
+            "ALTER TABLE channel_bridge ADD COLUMN oauth_scopes TEXT[]",
+        )
+        .await?;
+
         // Create unique index on channel_bridge
         manager
             .create_index(
@@ -70,6 +90,103 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
+
+        // Create partial index for OAuth token expiry (requires raw SQL for WHERE clause)
+        exec_raw_sql(
+            manager,
+            "CREATE INDEX idx_channel_bridge_oauth_expiry ON channel_bridge (token_expiry) WHERE bridge_type = 'oauth' AND token_expiry IS NOT NULL",
+        )
+        .await?;
+
+        // Create bots table
+        manager
+            .create_table(
+                Table::create()
+                    .table(Bots::Table)
+                    .col(
+                        ColumnDef::new(Bots::Id)
+                            .uuid()
+                            .not_null()
+                            .default(Expr::cust("uuidv7()"))
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(Bots::Name).text().not_null())
+                    .col(ColumnDef::new(Bots::DisplayName).text().not_null())
+                    .col(ColumnDef::new(Bots::Description).text())
+                    .col(ColumnDef::new(Bots::ApiChannelBridgeId).uuid())
+                    .col(ColumnDef::new(Bots::OauthChannelBridgeId).uuid())
+                    .col(
+                        ColumnDef::new(Bots::IsActive)
+                            .boolean()
+                            .not_null()
+                            .default(true),
+                    )
+                    .col(
+                        ColumnDef::new(Bots::CreatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::cust("now()")),
+                    )
+                    .col(
+                        ColumnDef::new(Bots::UpdatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null()
+                            .default(Expr::cust("now()")),
+                    )
+                    .col(ColumnDef::new(Bots::Metadata).json_binary())
+                    .to_owned(),
+            )
+            .await?;
+
+        // Add capabilities column (TEXT[] array) using raw SQL
+        exec_raw_sql(manager, "ALTER TABLE bots ADD COLUMN capabilities TEXT[]").await?;
+
+        // Add CHECK constraint for bots (requires raw SQL)
+        exec_raw_sql(
+            manager,
+            "ALTER TABLE bots ADD CONSTRAINT bots_bridge_check CHECK (api_channel_bridge_id IS NOT NULL OR oauth_channel_bridge_id IS NOT NULL)",
+        )
+        .await?;
+
+        // Create foreign keys from bots to channel_bridge
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_bots_api_channel_bridge")
+                    .from(Bots::Table, Bots::ApiChannelBridgeId)
+                    .to(ChannelBridge::Table, ChannelBridge::Id)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("fk_bots_oauth_channel_bridge")
+                    .from(Bots::Table, Bots::OauthChannelBridgeId)
+                    .to(ChannelBridge::Table, ChannelBridge::Id)
+                    .to_owned(),
+            )
+            .await?;
+
+        // Create indexes on bots (with WHERE clauses require raw SQL)
+        exec_raw_sql(
+            manager,
+            "CREATE INDEX idx_bots_api_bridge ON bots (api_channel_bridge_id) WHERE api_channel_bridge_id IS NOT NULL",
+        )
+        .await?;
+
+        exec_raw_sql(
+            manager,
+            "CREATE INDEX idx_bots_oauth_bridge ON bots (oauth_channel_bridge_id) WHERE oauth_channel_bridge_id IS NOT NULL",
+        )
+        .await?;
+
+        exec_raw_sql(
+            manager,
+            "CREATE INDEX idx_bots_active ON bots (is_active) WHERE is_active = true",
+        )
+        .await?;
 
         // Create profiles table
         manager
@@ -728,6 +845,9 @@ impl MigrationTrait for Migration {
             .drop_table(Table::drop().table(Profiles::Table).to_owned())
             .await?;
         manager
+            .drop_table(Table::drop().table(Bots::Table).to_owned())
+            .await?;
+        manager
             .drop_table(Table::drop().table(ChannelBridge::Table).to_owned())
             .await?;
 
@@ -740,9 +860,34 @@ impl MigrationTrait for Migration {
 enum ChannelBridge {
     Table,
     Id,
+    BridgeType,
+    ThirdProviderType,
     ThirdId,
     ThirdSecret,
-    ThirdProviderType,
+    AccessToken,
+    RefreshToken,
+    TokenExpiry,
+    #[allow(dead_code)] // OauthScopes column is added via raw SQL (TEXT[] array type)
+    OauthScopes,
+    ApiEndpoint,
+    ApiVersion,
+    CreatedAt,
+    UpdatedAt,
+    Metadata,
+}
+
+#[derive(DeriveIden)]
+enum Bots {
+    Table,
+    Id,
+    Name,
+    DisplayName,
+    Description,
+    ApiChannelBridgeId,
+    OauthChannelBridgeId,
+    IsActive,
+    #[allow(dead_code)] // Capabilities column is added via raw SQL (TEXT[] array type)
+    Capabilities,
     CreatedAt,
     UpdatedAt,
     Metadata,

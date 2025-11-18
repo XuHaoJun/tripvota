@@ -2,6 +2,7 @@
 
 pub mod prelude;
 
+pub mod bots;
 pub mod channel_bridge;
 pub mod chat_participants;
 pub mod chats;
