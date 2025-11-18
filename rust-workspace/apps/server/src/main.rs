@@ -33,13 +33,43 @@ async fn main() {
         // A server-streaming request handler. Very useful when you need them!
         .rpc(HelloWorldService::say_hello_stream(stream_three_reponses));
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3030")
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3030").await.unwrap();
     println!("listening on http://{:?}", listener.local_addr().unwrap());
     axum::serve(listener, app.layer(CorsLayer::very_permissive()))
+        .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap();
+}
+
+/// Handle graceful shutdown signals (SIGTERM, SIGINT, etc.)
+async fn shutdown_signal() {
+    use tokio::signal;
+
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {
+            println!("Received Ctrl+C, shutting down gracefully...");
+        },
+        _ = terminate => {
+            println!("Received SIGTERM, shutting down gracefully...");
+        },
+    }
 }
 
 /// The bread-and-butter of Connect-Web, a Unary request handler.
