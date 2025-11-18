@@ -1,0 +1,31 @@
+# Ignore git
+.git
+.gitignore
+
+# Ignore Rust build artifacts
+rust-workspace/target/
+rust-workspace/**/target/
+
+# Ignore Node.js
+typescript-workspace/node_modules/
+learn-projects/
+node_modules/
+
+# Ignore documentation and dev files
+docs/
+README.md
+*.md
+
+# Ignore Docker files
+docker-compose.yaml
+
+# Ignore editor and OS files
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# Ignore scripts
+scripts/
+

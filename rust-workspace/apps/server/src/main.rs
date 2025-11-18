@@ -33,7 +33,7 @@ async fn main() {
         // A server-streaming request handler. Very useful when you need them!
         .rpc(HelloWorldService::say_hello_stream(stream_three_reponses));
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3030")
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3030")
         .await
         .unwrap();
     println!("listening on http://{:?}", listener.local_addr().unwrap());
