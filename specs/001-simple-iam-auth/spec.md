@@ -33,6 +33,8 @@ As a new user, I want to create an account using my email and password so that I
 1. **Given** a guest user on the registration page, **When** they enter a valid email and strong password and submit, **Then** a new user account is created and they are logged in or redirected to login.
 2. **Given** a guest user, **When** they try to register with an existing email, **Then** an error message informs them the account already exists.
 3. **Given** a guest user, **When** they submit invalid data (e.g. short password), **Then** validation errors are displayed.
+4. **Given** a guest user, **When** they register, **Then** their username is set to the value of their email address (e.g. `user` from `user@example.com`).
+5. **Given** an authenticated user, **When** they edit their profile, **Then** they can change their username.
 
 ---
 
@@ -67,11 +69,29 @@ As a system, I want to restrict access to certain pages to authenticated users o
 
 ---
 
+### User Story 4 - Admin Layout & Navigation (Priority: P2)
+
+As an authenticated user, I want a persistent navigation bar with my user profile status so that I can easily access the logout function and verify my login status.
+
+**Why this priority**: Provides essential navigation and feedback to the user about their session.
+
+**Independent Test**: Log in, observe the top app bar. Hover over the avatar to see the tooltip (username). Click the avatar to open the menu and see "Logout".
+
+**Acceptance Scenarios**:
+
+1. **Given** an authenticated user on any admin page, **When** they view the top of the page, **Then** they see an App Bar with a user avatar on the right.
+2. **Given** the user avatar, **When** the user hovers over it, **Then** a tooltip displays their username.
+3. **Given** the user avatar, **When** the user clicks it, **Then** a dropdown menu appears with a "Logout" option.
+4. **Given** the logout option, **When** clicked, **Then** the logout flow (from US3) is triggered.
+
+---
+
 ### Edge Cases
 
 - What happens when the database is down during registration? (Should show user-friendly error)
 - What happens if a user tries to access the login page while already logged in? (Should redirect to dashboard)
 - How does the system handle session timeout? (Should require re-login)
+- What if the username is very long? (Tooltip should handle it, avatar remains fixed size)
 
 ## Requirements *(mandatory)*
 
@@ -86,10 +106,14 @@ As a system, I want to restrict access to certain pages to authenticated users o
 - **FR-007**: System MUST provide a mechanism to log out (terminate session).
 - **FR-008**: System MUST redirect unauthenticated requests for protected resources to the login page.
 - **FR-009**: System MUST prevent duplicate registrations for the same email address.
+- **FR-010**: System MUST display an admin application bar on protected routes.
+- **FR-011**: System MUST display a user avatar with a hover tooltip showing the username.
+- **FR-012**: System MUST provide a user menu accessible via the avatar containing the Logout action.
+- **FR-013**: System MUST allow users to edit their username after registration.
 
 ### Key Entities
 
-- **User**: Represents a registered identity. Attributes: ID, Email, PasswordHash, CreatedAt.
+- **User**: Represents a registered identity. Attributes: ID, Email, Username, PasswordHash, CreatedAt.
 
 ## Success Criteria *(mandatory)*
 
@@ -98,3 +122,4 @@ As a system, I want to restrict access to certain pages to authenticated users o
 - **SC-001**: Users can complete the registration process in under 2 minutes.
 - **SC-002**: 100% of successful logins result in a valid session.
 - **SC-003**: Unauthenticated access attempts to protected routes are 100% blocked and redirected.
+- **SC-004**: Users can locate and trigger the logout function within 5 seconds of deciding to log out.
