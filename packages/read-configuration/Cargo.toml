@@ -1,9 +1,0 @@
-[package]
-name = "read-configuration"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-dotenvy = "0.15"
-figment = { version = "0.10", features = ["json", "env"] }
-serde = { version = "1.0", features = ["derive"] }
