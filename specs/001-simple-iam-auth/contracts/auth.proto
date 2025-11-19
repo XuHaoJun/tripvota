@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package auth;
+
+// AuthService handles user registration, authentication, and session management.
+service AuthService {
+  // Register a new user.
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  
+  // Log in an existing user.
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // Refresh the access token using a refresh token.
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  
+  // Log out the current user.
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  
+  // Get the current authenticated user's profile.
+  rpc Me(MeRequest) returns (MeResponse);
+}
+
+message RegisterRequest {
+  string email = 1;
+  string username = 2; // Added username to match accounts table
+  string password = 3;
+}
+
+message RegisterResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message LoginRequest {
+  string email = 1; // Can be email or username logic-wise, but field name implies email
+  string password = 2;
+}
+
+message LoginResponse {
+  bool success = 1;
+  User user = 2;
+  string access_token = 3;
+  string refresh_token = 4;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  bool success = 1;
+  string access_token = 2;
+  string refresh_token = 3; // Optional: rotate refresh token
+}
+
+message LogoutRequest {}
+
+message LogoutResponse {
+  bool success = 1;
+}
+
+message MeRequest {}
+
+message MeResponse {
+  User user = 1;
+}
+
+message User {
+  string id = 1;
+  string email = 2;
+  string username = 3; // Added username
+  string created_at = 4;
+}
