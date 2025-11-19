@@ -1,32 +1,28 @@
-"use client";
+'use client';
 
-import { useState, Suspense } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { loginSchema, LoginValues } from "@/lib/schemas/auth";
-import { Button } from "@workspace/ui/components/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@workspace/ui/components/form";
-import { Input } from "@workspace/ui/components/input";
-import { useMutation } from "@connectrpc/connect-query";
-import { AuthService } from "@workspace/proto-gen/src/auth_pb";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useSetAtom } from "jotai";
-import { userAtom } from "@/atoms/auth";
-import { setTokens } from "@workspace/fetch-ext";
-import { toast } from "sonner";
+import { useState, Suspense } from 'react';
+
+import { useMutation } from '@connectrpc/connect-query';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useSetAtom } from 'jotai';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+
+import { setTokens } from '@workspace/fetch-ext';
+import { AuthService } from '@workspace/proto-gen/src/auth_pb';
+import { Button } from '@workspace/ui/components/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@workspace/ui/components/form';
+import { Input } from '@workspace/ui/components/input';
+
+import { userAtom } from '@/atoms/auth';
+import { loginSchema, LoginValues } from '@/lib/schemas/auth';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const registered = searchParams.get("registered");
+  const registered = searchParams.get('registered');
   const [error, setError] = useState<string | null>(null);
   const setUser = useSetAtom(userAtom);
 
@@ -35,8 +31,8 @@ function LoginForm() {
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
-      password: "",
+      email: '',
+      password: '',
     },
   });
 
@@ -54,28 +50,24 @@ function LoginForm() {
         // Update atom
         setUser(response.user);
         // Redirect
-        toast.success("Logged in successfully");
-        router.push("/admin/dashboard"); // Assuming dashboard exists
+        toast.success('Logged in successfully');
+        router.push('/admin/dashboard'); // Assuming dashboard exists
       } else {
-        setError("Invalid email or password");
-        toast.error("Invalid email or password");
+        setError('Invalid email or password');
+        toast.error('Invalid email or password');
       }
     } catch (e: any) {
       console.error(e);
-      setError("An unexpected error occurred");
-      toast.error("An unexpected error occurred");
+      setError('An unexpected error occurred');
+      toast.error('An unexpected error occurred');
     }
   }
 
   return (
     <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
       <div className="flex flex-col space-y-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Welcome back
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Enter your email to sign in to your account
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+        <p className="text-muted-foreground text-sm">Enter your email to sign in to your account</p>
       </div>
 
       {registered && (
@@ -113,11 +105,7 @@ function LoginForm() {
             )}
           />
 
-          {error && (
-            <div className="text-sm text-destructive">
-              {error}
-            </div>
-          )}
+          {error && <div className="text-destructive text-sm">{error}</div>}
 
           <Button type="submit" className="w-full" disabled={isPending}>
             {isPending && (
@@ -128,7 +116,7 @@ function LoginForm() {
         </form>
       </Form>
 
-      <div className="px-8 text-center text-sm text-muted-foreground">
+      <div className="text-muted-foreground px-8 text-center text-sm">
         <Link href="/admin/register" className="hover:text-brand underline underline-offset-4">
           Don&apos;t have an account? Sign Up
         </Link>
@@ -146,4 +134,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

@@ -1,10 +1,9 @@
-
 const ACCESS_TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 const REFRESH_URL = '/api/auth.AuthService/RefreshToken'; // Default path for ConnectRPC
 
-export const getAccessToken = () => typeof window !== 'undefined' ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
-export const getRefreshToken = () => typeof window !== 'undefined' ? localStorage.getItem(REFRESH_TOKEN_KEY) : null;
+export const getAccessToken = () => (typeof window !== 'undefined' ? localStorage.getItem(ACCESS_TOKEN_KEY) : null);
+export const getRefreshToken = () => (typeof window !== 'undefined' ? localStorage.getItem(REFRESH_TOKEN_KEY) : null);
 export const setTokens = (access: string, refresh: string) => {
   if (typeof window !== 'undefined') {
     localStorage.setItem(ACCESS_TOKEN_KEY, access);
@@ -23,10 +22,10 @@ let refreshPromise: Promise<void> | null = null;
 
 export const authFetch: typeof fetch = async (input, init) => {
   const token = getAccessToken();
-  
+
   // Clone headers to avoid mutation issues
   const headers = new Headers(init?.headers);
-  
+
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
@@ -66,10 +65,10 @@ export const authFetch: typeof fetch = async (input, init) => {
           clearTokens();
           // Redirect to login if in browser
           if (typeof window !== 'undefined') {
-             const currentPath = window.location.pathname;
-             if (!currentPath.includes('/login')) {
-                 window.location.href = `/admin/login?redirect=${encodeURIComponent(currentPath)}`;
-             }
+            const currentPath = window.location.pathname;
+            if (!currentPath.includes('/login')) {
+              window.location.href = `/admin/login?redirect=${encodeURIComponent(currentPath)}`;
+            }
           }
           throw e;
         } finally {

@@ -1,25 +1,21 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { registerSchema, RegisterValues } from "@/lib/schemas/auth";
-import { Button } from "@workspace/ui/components/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@workspace/ui/components/form";
-import { Input } from "@workspace/ui/components/input";
-import { useMutation } from "@connectrpc/connect-query";
-import { AuthService } from "@workspace/proto-gen/src/auth_pb";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { useState } from 'react';
+
+import { useMutation } from '@connectrpc/connect-query';
+import { zodResolver } from '@hookform/resolvers/zod';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import * as z from 'zod';
+
+import { AuthService } from '@workspace/proto-gen/src/auth_pb';
+import { Button } from '@workspace/ui/components/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@workspace/ui/components/form';
+import { Input } from '@workspace/ui/components/input';
+
+import { registerSchema, RegisterValues } from '@/lib/schemas/auth';
 
 // Note: Assuming path to generated proto code.
 // If not generated yet, this will be broken.
@@ -27,7 +23,7 @@ import { toast } from "sonner";
 export default function RegisterPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  
+
   // Use standard connect-query useMutation
   // We need to verify if AuthService is exported correctly from rpc-client
   const { mutateAsync: register, isPending } = useMutation(AuthService.method.register);
@@ -35,9 +31,9 @@ export default function RegisterPage() {
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      username: "",
-      email: "",
-      password: "",
+      username: '',
+      email: '',
+      password: '',
     },
   });
 
@@ -51,16 +47,16 @@ export default function RegisterPage() {
       });
 
       if (response.success) {
-        toast.success("Registration successful! Please log in.");
-        router.push("/admin/login?registered=true");
+        toast.success('Registration successful! Please log in.');
+        router.push('/admin/login?registered=true');
       } else {
-        const msg = response.message || "Registration failed";
+        const msg = response.message || 'Registration failed';
         setError(msg);
         toast.error(msg);
       }
     } catch (e: any) {
       console.error(e);
-      const msg = e.message || "An unexpected error occurred";
+      const msg = e.message || 'An unexpected error occurred';
       setError(msg);
       toast.error(msg);
     }
@@ -70,12 +66,8 @@ export default function RegisterPage() {
     <div className="container flex h-screen w-screen flex-col items-center justify-center">
       <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
         <div className="flex flex-col space-y-2 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Create an account
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Enter your details below to create your account
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
+          <p className="text-muted-foreground text-sm">Enter your details below to create your account</p>
         </div>
 
         <Form {...form}>
@@ -119,12 +111,8 @@ export default function RegisterPage() {
                 </FormItem>
               )}
             />
-            
-            {error && (
-              <div className="text-sm text-destructive">
-                {error}
-              </div>
-            )}
+
+            {error && <div className="text-destructive text-sm">{error}</div>}
 
             <Button type="submit" className="w-full" disabled={isPending}>
               {isPending && (
@@ -134,10 +122,10 @@ export default function RegisterPage() {
             </Button>
           </form>
         </Form>
-        
-        <div className="px-8 text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link href="/admin/login" className="underline underline-offset-4 hover:text-primary">
+
+        <div className="text-muted-foreground px-8 text-center text-sm">
+          Already have an account?{' '}
+          <Link href="/admin/login" className="hover:text-primary underline underline-offset-4">
             Login
           </Link>
         </div>
@@ -145,4 +133,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-
