@@ -1,17 +1,17 @@
 use async_stream::stream;
+use auth::service::*; // Import auth service handlers
 use axum::Router;
 use axum_connect::{futures::Stream, prelude::*};
 use error::Error;
-use proto::hello::*;
 use proto::auth::*; // Import auth proto
-use auth::service::*; // Import auth service handlers
+use proto::hello::*;
 use sea_orm::{Database, DatabaseConnection};
 use serde::Deserialize;
 use tower_http::cors::CorsLayer;
 
 // Take a peak at error.rs to see how errors work in axum-connect.
-mod error;
-mod auth; // Register auth module
+mod auth;
+mod error; // Register auth module
 
 #[derive(Clone)]
 struct AppState {

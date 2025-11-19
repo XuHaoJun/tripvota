@@ -1,7 +1,7 @@
-use jsonwebtoken::{encode, decode, Header, Validation, EncodingKey, DecodingKey};
-use serde::{Serialize, Deserialize};
-use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::Result;
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use serde::{Deserialize, Serialize};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -17,13 +17,13 @@ pub fn sign_token(user_id: &str, secret: &str, duration_secs: u64) -> Result<Str
         exp: (now + duration_secs) as usize,
         iat: now as usize,
     };
-    
+
     let token = encode(
         &Header::default(),
         &claims,
         &EncodingKey::from_secret(secret.as_bytes()),
     )?;
-    
+
     Ok(token)
 }
 
@@ -33,7 +33,6 @@ pub fn verify_token(token: &str, secret: &str) -> Result<Claims> {
         &DecodingKey::from_secret(secret.as_bytes()),
         &Validation::default(),
     )?;
-    
+
     Ok(token_data.claims)
 }
-
