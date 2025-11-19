@@ -1,10 +1,11 @@
-use axum_connect::prelude::*;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, ExprTrait, QueryFilter, Set};
 use crate::proto::auth::*;
 use crate::auth::password;
 use crate::auth::jwt;
 use workspace_entity::accounts;
 use anyhow::Result;
+use chrono::Utc;
+use uuid::Uuid;
 
 // This state should be injected in main.rs. 
 // For now, we'll assume the handler has access to the connection.
@@ -48,14 +49,14 @@ pub async fn register(
 
     // Create user
     let new_account = accounts::ActiveModel {
-        id: Set(uuid::Uuid::now_v7()),
+        id: Set(Uuid::now_v7()),
         email: Set(request.email),
         username: Set(request.username),
         password_hash: Set(Some(password_hash)),
         email_verified: Set(false),
         is_active: Set(true),
-        created_at: Set(chrono::Utc::now().into()),
-        updated_at: Set(chrono::Utc::now().into()),
+        created_at: Set(Utc::now().into()),
+        updated_at: Set(Utc::now().into()),
         ..Default::default()
     };
 
@@ -122,7 +123,7 @@ pub async fn login(
 
     // Update last login
     let mut active_user: accounts::ActiveModel = user.clone().into();
-    active_user.last_login_at = Set(Some(chrono::Utc::now().into()));
+    active_user.last_login_at = Set(Some(Utc::now().into()));
     active_user.update(&state.conn).await
         .map_err(|e| crate::error::Error::Anyhow(anyhow::Error::new(e)))?;
 
@@ -185,7 +186,7 @@ pub async fn me(
     // TODO: Extract user from request extensions/headers
     
     // Assuming we passed auth check and have a user ID (mocked for now)
-    let user_id = uuid::Uuid::nil(); // Replace with actual ID from context
+    let user_id = Uuid::nil(); // Replace with actual ID from context
 
     let user = accounts::Entity::find_by_id(user_id)
         .one(&state.conn)
