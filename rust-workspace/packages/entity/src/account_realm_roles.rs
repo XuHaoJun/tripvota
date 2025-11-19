@@ -3,6 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "account_realm_roles")]
 #[serde(rename_all = "camelCase")]
@@ -15,54 +16,40 @@ pub struct Model {
     pub role_id: Uuid,
     pub granted_at: DateTimeWithTimeZone,
     pub granted_by: Option<Uuid>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::accounts::Entity",
-        from = "Column::AccountId",
-        to = "super::accounts::Column::Id",
+        belongs_to,
+        relation_enum = "Accounts2",
+        from = "account_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    Accounts2,
+    pub accounts_2: HasOne<super::accounts::Entity>,
     #[sea_orm(
-        belongs_to = "super::accounts::Entity",
-        from = "Column::GrantedBy",
-        to = "super::accounts::Column::Id",
+        belongs_to,
+        relation_enum = "Accounts1",
+        from = "granted_by",
+        to = "id",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    Accounts1,
+    pub accounts_1: HasOne<super::accounts::Entity>,
     #[sea_orm(
-        belongs_to = "super::realms::Entity",
-        from = "Column::RealmId",
-        to = "super::realms::Column::Id",
+        belongs_to,
+        from = "realm_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    Realms,
+    pub realms: HasOne<super::realms::Entity>,
     #[sea_orm(
-        belongs_to = "super::roles::Entity",
-        from = "Column::RoleId",
-        to = "super::roles::Column::Id",
+        belongs_to,
+        from = "role_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    Roles,
-}
-
-impl Related<super::realms::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Realms.def()
-    }
-}
-
-impl Related<super::roles::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Roles.def()
-    }
+    pub roles: HasOne<super::roles::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

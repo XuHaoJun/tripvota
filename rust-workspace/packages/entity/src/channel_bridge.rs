@@ -3,6 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "channel_bridge")]
 #[serde(rename_all = "camelCase")]
@@ -33,18 +34,8 @@ pub struct Model {
     pub metadata: Option<Json>,
     #[sea_orm(nullable)]
     pub oauth_scopes: Option<Vec<String>>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(has_many = "super::profiles::Entity")]
-    Profiles,
-}
-
-impl Related<super::profiles::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Profiles.def()
-    }
+    #[sea_orm(has_many)]
+    pub profiles: HasMany<super::profiles::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

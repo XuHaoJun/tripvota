@@ -3,6 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "chat_participants")]
 #[serde(rename_all = "camelCase")]
@@ -14,38 +15,22 @@ pub struct Model {
     #[sea_orm(column_type = "Text")]
     pub role: String,
     pub joined_at: DateTimeWithTimeZone,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::chats::Entity",
-        from = "Column::ChatId",
-        to = "super::chats::Column::Id",
+        belongs_to,
+        from = "chat_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    Chats,
+    pub chats: HasOne<super::chats::Entity>,
     #[sea_orm(
-        belongs_to = "super::profiles::Entity",
-        from = "Column::ProfileId",
-        to = "super::profiles::Column::Id",
+        belongs_to,
+        from = "profile_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    Profiles,
-}
-
-impl Related<super::chats::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Chats.def()
-    }
-}
-
-impl Related<super::profiles::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Profiles.def()
-    }
+    pub profiles: HasOne<super::profiles::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

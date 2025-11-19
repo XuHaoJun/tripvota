@@ -3,6 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "trip_cards")]
 #[serde(rename_all = "camelCase")]
@@ -36,57 +37,18 @@ pub struct Model {
         nullable
     )]
     pub position: Option<String>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
+    #[sea_orm(has_one)]
+    pub trip_card_rich_text: HasOne<super::trip_card_rich_text::Entity>,
     #[sea_orm(
-        belongs_to = "super::profiles::Entity",
-        from = "Column::CreatedBy",
-        to = "super::profiles::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
-    Profiles,
-    #[sea_orm(has_one = "super::trip_card_rich_text::Entity")]
-    TripCardRichText,
-    #[sea_orm(has_many = "super::trip_card_votes::Entity")]
-    TripCardVotes,
-    #[sea_orm(
-        belongs_to = "super::trips::Entity",
-        from = "Column::TripId",
-        to = "super::trips::Column::Id",
+        belongs_to,
+        from = "trip_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    Trips,
-}
-
-impl Related<super::trip_card_rich_text::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::TripCardRichText.def()
-    }
-}
-
-impl Related<super::trip_card_votes::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::TripCardVotes.def()
-    }
-}
-
-impl Related<super::trips::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Trips.def()
-    }
-}
-
-impl Related<super::profiles::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::trip_card_votes::Relation::Profiles.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(super::trip_card_votes::Relation::TripCards.def().rev())
-    }
+    pub trips: HasOne<super::trips::Entity>,
+    #[sea_orm(has_many, via = "trip_card_votes")]
+    pub profiles: HasMany<super::profiles::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

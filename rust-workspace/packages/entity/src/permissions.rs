@@ -3,6 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "permissions")]
 #[serde(rename_all = "camelCase")]
@@ -20,38 +21,22 @@ pub struct Model {
     pub resource_type: String,
     pub created_at: DateTimeWithTimeZone,
     pub actions: Vec<String>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::realms::Entity",
-        from = "Column::RealmId",
-        to = "super::realms::Column::Id",
+        belongs_to,
+        from = "realm_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    Realms,
+    pub realms: HasOne<super::realms::Entity>,
     #[sea_orm(
-        belongs_to = "super::roles::Entity",
-        from = "Column::RoleId",
-        to = "super::roles::Column::Id",
+        belongs_to,
+        from = "role_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    Roles,
-}
-
-impl Related<super::realms::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Realms.def()
-    }
-}
-
-impl Related<super::roles::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Roles.def()
-    }
+    pub roles: HasOne<super::roles::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

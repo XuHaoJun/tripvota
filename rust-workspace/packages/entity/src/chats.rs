@@ -3,6 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "chats")]
 #[serde(rename_all = "camelCase")]
@@ -18,57 +19,18 @@ pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     #[sea_orm(column_type = "JsonBinary", nullable)]
     pub metadata: Option<Json>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(has_many = "super::chat_participants::Entity")]
-    ChatParticipants,
-    #[sea_orm(has_many = "super::messages::Entity")]
-    Messages,
+    #[sea_orm(has_many)]
+    pub messages: HasMany<super::messages::Entity>,
     #[sea_orm(
-        belongs_to = "super::profiles::Entity",
-        from = "Column::CreatedBy",
-        to = "super::profiles::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
-    Profiles,
-    #[sea_orm(
-        belongs_to = "super::trips::Entity",
-        from = "Column::TripId",
-        to = "super::trips::Column::Id",
+        belongs_to,
+        from = "trip_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    Trips,
-}
-
-impl Related<super::chat_participants::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ChatParticipants.def()
-    }
-}
-
-impl Related<super::messages::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Messages.def()
-    }
-}
-
-impl Related<super::trips::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Trips.def()
-    }
-}
-
-impl Related<super::profiles::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::chat_participants::Relation::Profiles.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(super::chat_participants::Relation::Chats.def().rev())
-    }
+    pub trips: HasOne<super::trips::Entity>,
+    #[sea_orm(has_many, via = "chat_participants")]
+    pub profiles: HasMany<super::profiles::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

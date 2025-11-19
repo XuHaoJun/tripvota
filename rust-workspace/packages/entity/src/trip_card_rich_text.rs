@@ -3,6 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "trip_card_rich_text")]
 #[serde(rename_all = "camelCase")]
@@ -14,38 +15,22 @@ pub struct Model {
     pub last_edited_by: Option<Uuid>,
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::profiles::Entity",
-        from = "Column::LastEditedBy",
-        to = "super::profiles::Column::Id",
+        belongs_to,
+        from = "last_edited_by",
+        to = "id",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    Profiles,
+    pub profiles: HasOne<super::profiles::Entity>,
     #[sea_orm(
-        belongs_to = "super::trip_cards::Entity",
-        from = "Column::TripCardId",
-        to = "super::trip_cards::Column::Id",
+        belongs_to,
+        from = "trip_card_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    TripCards,
-}
-
-impl Related<super::profiles::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Profiles.def()
-    }
-}
-
-impl Related<super::trip_cards::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::TripCards.def()
-    }
+    pub trip_cards: HasOne<super::trip_cards::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -3,6 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "federated_identities")]
 #[serde(rename_all = "camelCase")]
@@ -31,38 +32,22 @@ pub struct Model {
     pub last_login_at: DateTimeWithTimeZone,
     #[sea_orm(column_type = "JsonBinary", nullable)]
     pub metadata: Option<Json>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::accounts::Entity",
-        from = "Column::AccountId",
-        to = "super::accounts::Column::Id",
+        belongs_to,
+        from = "account_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    Accounts,
+    pub accounts: HasOne<super::accounts::Entity>,
     #[sea_orm(
-        belongs_to = "super::identity_providers::Entity",
-        from = "Column::IdentityProviderId",
-        to = "super::identity_providers::Column::Id",
+        belongs_to,
+        from = "identity_provider_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    IdentityProviders,
-}
-
-impl Related<super::accounts::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Accounts.def()
-    }
-}
-
-impl Related<super::identity_providers::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::IdentityProviders.def()
-    }
+    pub identity_providers: HasOne<super::identity_providers::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

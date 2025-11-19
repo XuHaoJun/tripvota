@@ -3,6 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "messages")]
 #[serde(rename_all = "camelCase")]
@@ -27,24 +28,14 @@ pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     #[sea_orm(column_type = "JsonBinary", nullable)]
     pub metadata: Option<Json>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::chats::Entity",
-        from = "Column::ChatId",
-        to = "super::chats::Column::Id",
+        belongs_to,
+        from = "chat_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    Chats,
-}
-
-impl Related<super::chats::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Chats.def()
-    }
+    pub chats: HasOne<super::chats::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

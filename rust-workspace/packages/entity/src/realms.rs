@@ -3,6 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "realms")]
 #[serde(rename_all = "camelCase")]
@@ -21,80 +22,28 @@ pub struct Model {
     pub updated_at: DateTimeWithTimeZone,
     #[sea_orm(column_type = "JsonBinary", nullable)]
     pub metadata: Option<Json>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(has_many = "super::account_realm_roles::Entity")]
-    AccountRealmRoles,
+    #[sea_orm(has_many)]
+    pub account_realm_roles: HasMany<super::account_realm_roles::Entity>,
     #[sea_orm(
-        belongs_to = "super::accounts::Entity",
-        from = "Column::CreatedBy",
-        to = "super::accounts::Column::Id",
+        belongs_to,
+        from = "created_by",
+        to = "id",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    Accounts,
-    #[sea_orm(has_many = "super::bots::Entity")]
-    Bots,
-    #[sea_orm(has_many = "super::identity_providers::Entity")]
-    IdentityProviders,
-    #[sea_orm(has_many = "super::permissions::Entity")]
-    Permissions,
-    #[sea_orm(has_many = "super::profiles::Entity")]
-    Profiles,
-    #[sea_orm(has_many = "super::roles::Entity")]
-    Roles,
-    #[sea_orm(has_many = "super::trips::Entity")]
-    Trips,
-}
-
-impl Related<super::account_realm_roles::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::AccountRealmRoles.def()
-    }
-}
-
-impl Related<super::accounts::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Accounts.def()
-    }
-}
-
-impl Related<super::bots::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Bots.def()
-    }
-}
-
-impl Related<super::identity_providers::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::IdentityProviders.def()
-    }
-}
-
-impl Related<super::permissions::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Permissions.def()
-    }
-}
-
-impl Related<super::profiles::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Profiles.def()
-    }
-}
-
-impl Related<super::roles::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Roles.def()
-    }
-}
-
-impl Related<super::trips::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Trips.def()
-    }
+    pub accounts: HasOne<super::accounts::Entity>,
+    #[sea_orm(has_many)]
+    pub bots: HasMany<super::bots::Entity>,
+    #[sea_orm(has_many)]
+    pub identity_providers: HasMany<super::identity_providers::Entity>,
+    #[sea_orm(has_many)]
+    pub permissions: HasMany<super::permissions::Entity>,
+    #[sea_orm(has_many)]
+    pub profiles: HasMany<super::profiles::Entity>,
+    #[sea_orm(has_many)]
+    pub roles: HasMany<super::roles::Entity>,
+    #[sea_orm(has_many)]
+    pub trips: HasMany<super::trips::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -3,6 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "trips")]
 #[serde(rename_all = "camelCase")]
@@ -25,65 +26,20 @@ pub struct Model {
     pub updated_at: DateTimeWithTimeZone,
     #[sea_orm(column_type = "JsonBinary", nullable)]
     pub metadata: Option<Json>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(has_one = "super::chats::Entity")]
-    Chats,
+    #[sea_orm(has_one)]
+    pub chats: HasOne<super::chats::Entity>,
     #[sea_orm(
-        belongs_to = "super::profiles::Entity",
-        from = "Column::CreatedBy",
-        to = "super::profiles::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
-    Profiles,
-    #[sea_orm(
-        belongs_to = "super::realms::Entity",
-        from = "Column::RealmId",
-        to = "super::realms::Column::Id",
+        belongs_to,
+        from = "realm_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    Realms,
-    #[sea_orm(has_many = "super::trip_cards::Entity")]
-    TripCards,
-    #[sea_orm(has_many = "super::trip_participants::Entity")]
-    TripParticipants,
-}
-
-impl Related<super::chats::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Chats.def()
-    }
-}
-
-impl Related<super::realms::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Realms.def()
-    }
-}
-
-impl Related<super::trip_cards::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::TripCards.def()
-    }
-}
-
-impl Related<super::trip_participants::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::TripParticipants.def()
-    }
-}
-
-impl Related<super::profiles::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::trip_participants::Relation::Profiles.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(super::trip_participants::Relation::Trips.def().rev())
-    }
+    pub realms: HasOne<super::realms::Entity>,
+    #[sea_orm(has_many)]
+    pub trip_cards: HasMany<super::trip_cards::Entity>,
+    #[sea_orm(has_many, via = "trip_participants")]
+    pub profiles: HasMany<super::profiles::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

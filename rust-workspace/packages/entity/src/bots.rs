@@ -3,6 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "bots")]
 #[serde(rename_all = "camelCase")]
@@ -27,40 +28,32 @@ pub struct Model {
     pub metadata: Option<Json>,
     #[sea_orm(nullable)]
     pub capabilities: Option<Vec<String>>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::channel_bridge::Entity",
-        from = "Column::ApiChannelBridgeId",
-        to = "super::channel_bridge::Column::Id",
+        belongs_to,
+        relation_enum = "ChannelBridge2",
+        from = "api_channel_bridge_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    ChannelBridge2,
+    pub channel_bridge_2: HasOne<super::channel_bridge::Entity>,
     #[sea_orm(
-        belongs_to = "super::channel_bridge::Entity",
-        from = "Column::OauthChannelBridgeId",
-        to = "super::channel_bridge::Column::Id",
+        belongs_to,
+        relation_enum = "ChannelBridge1",
+        from = "oauth_channel_bridge_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    ChannelBridge1,
+    pub channel_bridge_1: HasOne<super::channel_bridge::Entity>,
     #[sea_orm(
-        belongs_to = "super::realms::Entity",
-        from = "Column::RealmId",
-        to = "super::realms::Column::Id",
+        belongs_to,
+        from = "realm_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    Realms,
-}
-
-impl Related<super::realms::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Realms.def()
-    }
+    pub realms: HasOne<super::realms::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

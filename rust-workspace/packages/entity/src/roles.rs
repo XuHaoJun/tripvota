@@ -3,6 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "roles")]
 #[serde(rename_all = "camelCase")]
@@ -16,40 +17,18 @@ pub struct Model {
     #[sea_orm(column_type = "Text", nullable)]
     pub description: Option<String>,
     pub created_at: DateTimeWithTimeZone,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(has_many = "super::account_realm_roles::Entity")]
-    AccountRealmRoles,
-    #[sea_orm(has_many = "super::permissions::Entity")]
-    Permissions,
+    #[sea_orm(has_many)]
+    pub account_realm_roles: HasMany<super::account_realm_roles::Entity>,
+    #[sea_orm(has_many)]
+    pub permissions: HasMany<super::permissions::Entity>,
     #[sea_orm(
-        belongs_to = "super::realms::Entity",
-        from = "Column::RealmId",
-        to = "super::realms::Column::Id",
+        belongs_to,
+        from = "realm_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    Realms,
-}
-
-impl Related<super::account_realm_roles::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::AccountRealmRoles.def()
-    }
-}
-
-impl Related<super::permissions::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Permissions.def()
-    }
-}
-
-impl Related<super::realms::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Realms.def()
-    }
+    pub realms: HasOne<super::realms::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

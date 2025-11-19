@@ -3,6 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "profiles")]
 #[serde(rename_all = "camelCase")]
@@ -33,103 +34,30 @@ pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     #[sea_orm(column_type = "JsonBinary", nullable)]
     pub metadata: Option<Json>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::channel_bridge::Entity",
-        from = "Column::ChannelBridgeId",
-        to = "super::channel_bridge::Column::Id",
+        belongs_to,
+        from = "channel_bridge_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    ChannelBridge,
-    #[sea_orm(has_many = "super::chat_participants::Entity")]
-    ChatParticipants,
-    #[sea_orm(has_many = "super::chats::Entity")]
-    Chats,
+    pub channel_bridge: HasOne<super::channel_bridge::Entity>,
     #[sea_orm(
-        belongs_to = "super::realms::Entity",
-        from = "Column::RealmId",
-        to = "super::realms::Column::Id",
+        belongs_to,
+        from = "realm_id",
+        to = "id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    Realms,
-    #[sea_orm(has_many = "super::trip_card_rich_text::Entity")]
-    TripCardRichText,
-    #[sea_orm(has_many = "super::trip_card_votes::Entity")]
-    TripCardVotes,
-    #[sea_orm(has_many = "super::trip_cards::Entity")]
-    TripCards,
-    #[sea_orm(has_many = "super::trip_participants::Entity")]
-    TripParticipants,
-    #[sea_orm(has_many = "super::trips::Entity")]
-    Trips,
-}
-
-impl Related<super::channel_bridge::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ChannelBridge.def()
-    }
-}
-
-impl Related<super::chat_participants::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ChatParticipants.def()
-    }
-}
-
-impl Related<super::realms::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Realms.def()
-    }
-}
-
-impl Related<super::trip_card_rich_text::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::TripCardRichText.def()
-    }
-}
-
-impl Related<super::trip_card_votes::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::TripCardVotes.def()
-    }
-}
-
-impl Related<super::trip_participants::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::TripParticipants.def()
-    }
-}
-
-impl Related<super::chats::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::chat_participants::Relation::Chats.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(super::chat_participants::Relation::Profiles.def().rev())
-    }
-}
-
-impl Related<super::trip_cards::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::trip_card_votes::Relation::TripCards.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(super::trip_card_votes::Relation::Profiles.def().rev())
-    }
-}
-
-impl Related<super::trips::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::trip_participants::Relation::Trips.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(super::trip_participants::Relation::Profiles.def().rev())
-    }
+    pub realms: HasOne<super::realms::Entity>,
+    #[sea_orm(has_many)]
+    pub trip_card_rich_texts: HasMany<super::trip_card_rich_text::Entity>,
+    #[sea_orm(has_many, via = "chat_participants")]
+    pub chats: HasMany<super::chats::Entity>,
+    #[sea_orm(has_many, via = "trip_card_votes")]
+    pub trip_cards: HasMany<super::trip_cards::Entity>,
+    #[sea_orm(has_many, via = "trip_participants")]
+    pub trips: HasMany<super::trips::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

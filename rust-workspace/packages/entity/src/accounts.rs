@@ -3,6 +3,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "accounts")]
 #[serde(rename_all = "camelCase")]
@@ -22,35 +23,10 @@ pub struct Model {
     pub last_login_at: Option<DateTimeWithTimeZone>,
     #[sea_orm(column_type = "JsonBinary", nullable)]
     pub metadata: Option<Json>,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(has_many = "super::federated_identities::Entity")]
-    FederatedIdentities,
-    #[sea_orm(has_many = "super::realms::Entity")]
-    Realms,
-}
-
-impl Related<super::federated_identities::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::FederatedIdentities.def()
-    }
-}
-
-impl Related<super::realms::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Realms.def()
-    }
-}
-
-impl Related<super::identity_providers::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::federated_identities::Relation::IdentityProviders.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(super::federated_identities::Relation::Accounts.def().rev())
-    }
+    #[sea_orm(has_many)]
+    pub realms: HasMany<super::realms::Entity>,
+    #[sea_orm(has_many, via = "federated_identities")]
+    pub identity_providers: HasMany<super::identity_providers::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
