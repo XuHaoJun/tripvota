@@ -5,6 +5,8 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
 
+import { RpcClientProvider } from '@workspace/rpc-client/index';
+
 import { ChatPanel } from '@/components/chat-panel';
 import { Timeline } from '@/components/timeline';
 import { TripCardPool } from '@/components/trip-card-pool';
@@ -139,78 +141,84 @@ export default function Home() {
   const sizes = MODE_SIZES[mode];
 
   return (
-    <div className="bg-background h-screen w-screen touch-none overflow-hidden">
-      <PanelGroup direction="vertical" className="h-full w-full">
-        {/* Chat Panel */}
-        <Panel
-          ref={chatPanelRef}
-          defaultSize={sizes.chat}
-          minSize={mode === 'arrangement' ? 0 : mode === 'ideation' ? 30 : 0}
-          maxSize={mode === 'arrangement' ? 0 : mode === 'ideation' ? 100 : 50}
-          collapsible={mode === 'arrangement'}
-          className={`transition-all duration-300 ease-in-out ${mode === 'arrangement' ? 'hidden' : ''}`}
-        >
-          <ChatPanel
-            messages={messages}
-            onAddMessage={(content) => {
-              const newMessage: Message = {
-                id: `msg-${Date.now()}`,
-                chatId: 'chat-1',
-                senderRole: 'user',
-                content,
-                createdAt: new Date(),
-              };
-              setMessages((prev) => [...prev, newMessage]);
-            }}
-            onAddToDraftPool={handleAddToDraftPool}
-            onFocusInput={handleFocusInput}
-          />
-        </Panel>
-        {mode !== 'arrangement' && (
+    <RpcClientProvider
+      connectTransportOptions={{
+        baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://localhost:3030',
+      }}
+    >
+      <div className="bg-background h-screen w-screen touch-none overflow-hidden">
+        <PanelGroup direction="vertical" className="h-full w-full">
+          {/* Chat Panel */}
+          <Panel
+            ref={chatPanelRef}
+            defaultSize={sizes.chat}
+            minSize={mode === 'arrangement' ? 0 : mode === 'ideation' ? 30 : 0}
+            maxSize={mode === 'arrangement' ? 0 : mode === 'ideation' ? 100 : 50}
+            collapsible={mode === 'arrangement'}
+            className={`transition-all duration-300 ease-in-out ${mode === 'arrangement' ? 'hidden' : ''}`}
+          >
+            <ChatPanel
+              messages={messages}
+              onAddMessage={(content) => {
+                const newMessage: Message = {
+                  id: `msg-${Date.now()}`,
+                  chatId: 'chat-1',
+                  senderRole: 'user',
+                  content,
+                  createdAt: new Date(),
+                };
+                setMessages((prev) => [...prev, newMessage]);
+              }}
+              onAddToDraftPool={handleAddToDraftPool}
+              onFocusInput={handleFocusInput}
+            />
+          </Panel>
+          {mode !== 'arrangement' && (
+            <PanelResizeHandle className="bg-border hover:bg-primary/20 h-1 touch-none transition-colors" />
+          )}
+
+          {/* Draft Pool Panel */}
+          <Panel
+            ref={draftPoolPanelRef}
+            defaultSize={sizes.draftPool}
+            minSize={10}
+            maxSize={mode === 'collection' ? 80 : 40}
+            className="transition-all duration-300 ease-in-out"
+          >
+            <TripCardPool
+              items={tripCards}
+              onRemove={handleRemoveFromDraftPool}
+              onScroll={handleDraftPoolScroll}
+              onStartDrag={handleStartDrag}
+              onAddToTimeline={handleAddToTimeline}
+              mode={mode}
+            />
+          </Panel>
+
+          {/* Timeline Panel */}
           <PanelResizeHandle className="bg-border hover:bg-primary/20 h-1 touch-none transition-colors" />
-        )}
-
-        {/* Draft Pool Panel */}
-        <Panel
-          ref={draftPoolPanelRef}
-          defaultSize={sizes.draftPool}
-          minSize={10}
-          maxSize={mode === 'collection' ? 80 : 40}
-          className="transition-all duration-300 ease-in-out"
-        >
-          <TripCardPool
-            items={tripCards}
-            onRemove={handleRemoveFromDraftPool}
-            onScroll={handleDraftPoolScroll}
-            onStartDrag={handleStartDrag}
-            onAddToTimeline={handleAddToTimeline}
-            mode={mode}
-          />
-        </Panel>
-
-        {/* Timeline Panel */}
-        <PanelResizeHandle className="bg-border hover:bg-primary/20 h-1 touch-none transition-colors" />
-        <Panel
-          ref={timelinePanelRef}
-          defaultSize={sizes.timeline}
-          minSize={mode === 'arrangement' ? 50 : 5}
-          maxSize={mode === 'arrangement' ? 100 : 20}
-          className="transition-all duration-300 ease-in-out"
-        >
-          <Timeline
-            items={tripCards}
-            draftItems={tripCards}
-            mode={mode}
-            onShowConversation={handleShowConversation}
-            onUpdateTimeline={setTripCards}
-            onStartArrangement={() => transitionToMode('arrangement')}
-            onJustAdded={(item) => {
-              // Optional: Add any post-add logic here (e.g., analytics, animations)
-              console.log('Item added to timeline:', item);
-            }}
-          />
-        </Panel>
-      </PanelGroup>
-    </div>
+          <Panel
+            ref={timelinePanelRef}
+            defaultSize={sizes.timeline}
+            minSize={mode === 'arrangement' ? 50 : 5}
+            maxSize={mode === 'arrangement' ? 100 : 20}
+            className="transition-all duration-300 ease-in-out"
+          >
+            <Timeline
+              items={tripCards}
+              draftItems={tripCards}
+              mode={mode}
+              onShowConversation={handleShowConversation}
+              onUpdateTimeline={setTripCards}
+              onStartArrangement={() => transitionToMode('arrangement')}
+              onJustAdded={(item) => {
+                // Optional: Add any post-add logic here (e.g., analytics, animations)
+                console.log('Item added to timeline:', item);
+              }}
+            />
+          </Panel>
+        </PanelGroup>
+      </div>
+    </RpcClientProvider>
   );
 }
