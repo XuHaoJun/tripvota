@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@workspace/rpc-client": "workspace:*",
+    "@workspace/fetch-ext": "workspace:*",
     "@workspace/ui": "workspace:*",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.544.0",

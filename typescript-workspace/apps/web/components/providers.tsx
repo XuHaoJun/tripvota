@@ -3,6 +3,7 @@
 import * as React from 'react';
 
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
+import { Toaster } from "@workspace/ui/components/sonner";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -15,6 +16,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableColorScheme
     >
       {children}
+      <Toaster />
     </NextThemesProvider>
   );
 }
