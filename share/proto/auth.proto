@@ -38,7 +38,7 @@ message LoginRequest {
 
 message LoginResponse {
   bool success = 1;
-  User user = 2;
+  Account account = 2;
   string access_token = 3;
   string refresh_token = 4;
 }
@@ -62,10 +62,10 @@ message LogoutResponse {
 message MeRequest {}
 
 message MeResponse {
-  User user = 1;
+  Account account = 1;
 }
 
-message User {
+message Account {
   string id = 1;
   string email = 2;
   string username = 3; // Added username

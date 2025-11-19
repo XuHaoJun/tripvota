@@ -9,13 +9,10 @@
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit"
   },
-  "dependencies": {
-    "ofetch": "^1.3.3"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@workspace/typescript-config": "workspace:*",
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0"
   }
 }
-

@@ -13,22 +13,21 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Allow login and register pages to render immediately
+  const isAuthPage = pathname.startsWith('/admin/login') || pathname.startsWith('/admin/register');
+
   useEffect(() => {
-    if (
-      !isLoading &&
-      !isAuthenticated &&
-      !pathname.startsWith('/admin/login') &&
-      !pathname.startsWith('/admin/register')
-    ) {
+    if (!isLoading && !isAuthenticated && !isAuthPage) {
       router.push(`/admin/login?redirect=${encodeURIComponent(pathname)}`);
     }
-  }, [isLoading, isAuthenticated, router, pathname]);
+  }, [isLoading, isAuthenticated, router, pathname, isAuthPage]);
 
-  if (isLoading) {
+  // Don't block auth pages with loading state
+  if (isLoading && !isAuthPage) {
     return <div className="flex h-screen items-center justify-center">Loading...</div>;
   }
 
-  if (!isAuthenticated && !pathname.startsWith('/admin/login') && !pathname.startsWith('/admin/register')) {
+  if (!isAuthenticated && !isAuthPage) {
     return null; // Or redirect logic handles this
   }
 

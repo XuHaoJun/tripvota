@@ -16,15 +16,15 @@ import { Button } from '@workspace/ui/components/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@workspace/ui/components/form';
 import { Input } from '@workspace/ui/components/input';
 
-import { userAtom } from '@/atoms/auth';
+import { accountAtom } from '@/atoms/auth';
 import { loginSchema, LoginValues } from '@/lib/schemas/auth';
 
-function LoginForm() {
+function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
   const [error, setError] = useState<string | null>(null);
-  const setUser = useSetAtom(userAtom);
+  const setAccount = useSetAtom(accountAtom);
 
   const { mutateAsync: login, isPending } = useMutation(AuthService.method.login);
 
@@ -44,11 +44,11 @@ function LoginForm() {
         password: values.password,
       });
 
-      if (response.success && response.user) {
+      if (response.success && response.account) {
         // Save tokens
         setTokens(response.accessToken, response.refreshToken);
         // Update atom
-        setUser(response.user);
+        setAccount(response.account);
         // Redirect
         toast.success('Logged in successfully');
         router.push('/admin/dashboard'); // Assuming dashboard exists
@@ -125,12 +125,20 @@ function LoginForm() {
   );
 }
 
+function LoginForm() {
+  return (
+    <Suspense
+      fallback={<div className="container flex h-screen w-screen flex-col items-center justify-center">Loading...</div>}
+    >
+      <LoginFormContent />
+    </Suspense>
+  );
+}
+
 export default function LoginPage() {
   return (
     <div className="container flex h-screen w-screen flex-col items-center justify-center">
-      <Suspense fallback={<div>Loading...</div>}>
-        <LoginForm />
-      </Suspense>
+      <LoginForm />
     </div>
   );
 }

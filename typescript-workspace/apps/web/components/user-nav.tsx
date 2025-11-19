@@ -20,10 +20,10 @@ import {
 } from '@workspace/ui/components/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@workspace/ui/components/tooltip';
 
-import { userAtom } from '@/atoms/auth';
+import { accountAtom } from '@/atoms/auth';
 
 export function UserNav() {
-  const [user, setUser] = useAtom(userAtom);
+  const [user, setUser] = useAtom(accountAtom);
   const router = useRouter();
   const { mutateAsync: logout } = useMutation(AuthService.method.logout);
 

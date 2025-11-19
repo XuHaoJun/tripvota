@@ -28,8 +28,8 @@ pub async fn register(
         )));
     }
 
-    // Check if user exists
-    let existing_user = accounts::Entity::find()
+    // Check if account exists
+    let existing_account = accounts::Entity::find()
         .filter(
             accounts::Column::Email
                 .eq(&request.email)
@@ -39,10 +39,10 @@ pub async fn register(
         .await
         .map_err(|e| crate::error::Error::Anyhow(anyhow::Error::new(e)))?;
 
-    if existing_user.is_some() {
+    if existing_account.is_some() {
         return Ok(RegisterResponse {
             success: false,
-            message: "User already exists".to_string(),
+            message: "Account already exists".to_string(),
         });
     }
 
@@ -50,7 +50,7 @@ pub async fn register(
     let password_hash =
         password::hash_password(&request.password).map_err(|e| crate::error::Error::Anyhow(e))?;
 
-    // Create user
+    // Create account
     let new_account = accounts::ActiveModel {
         id: Set(Uuid::now_v7()),
         email: Set(request.email),
@@ -78,11 +78,11 @@ pub async fn login(
     State(state): State<AppState>,
     request: LoginRequest,
 ) -> Result<LoginResponse, crate::error::Error> {
-    // Find user by email
+    // Find account by email
     // Note: request field is named 'email' but logic says it can be username too?
     // Let's support both if we want, or strict email. The proto comment says "Can be email or username".
 
-    let user = accounts::Entity::find()
+    let account = accounts::Entity::find()
         .filter(
             accounts::Column::Email.eq(&request.email), // .or(accounts::Column::Username.eq(&request.email)) // Uncomment to allow username login
         )
@@ -90,12 +90,12 @@ pub async fn login(
         .await
         .map_err(|e| crate::error::Error::Anyhow(anyhow::Error::new(e)))?;
 
-    let user = match user {
-        Some(u) => u,
+    let account = match account {
+        Some(a) => a,
         None => {
             return Ok(LoginResponse {
                 success: false,
-                user: None,
+                account: None,
                 access_token: "".to_string(),
                 refresh_token: "".to_string(),
             });
@@ -103,7 +103,7 @@ pub async fn login(
     };
 
     // Verify password
-    let valid = if let Some(hash) = &user.password_hash {
+    let valid = if let Some(hash) = &account.password_hash {
         password::verify_password(&request.password, hash)
             .map_err(|e| crate::error::Error::Anyhow(e))?
     } else {
@@ -113,33 +113,33 @@ pub async fn login(
     if !valid {
         return Ok(LoginResponse {
             success: false,
-            user: None,
+            account: None,
             access_token: "".to_string(),
             refresh_token: "".to_string(),
         });
     }
 
     // Generate tokens
-    let access_token = jwt::sign_token(&user.id.to_string(), &state.jwt_secret, 3600) // 1 hour
+    let access_token = jwt::sign_token(&account.id.to_string(), &state.jwt_secret, 3600) // 1 hour
         .map_err(|e| crate::error::Error::Anyhow(e))?;
-    let refresh_token = jwt::sign_token(&user.id.to_string(), &state.jwt_secret, 86400 * 7) // 7 days
+    let refresh_token = jwt::sign_token(&account.id.to_string(), &state.jwt_secret, 86400 * 7) // 7 days
         .map_err(|e| crate::error::Error::Anyhow(e))?;
 
     // Update last login
-    let mut active_user: accounts::ActiveModel = user.clone().into();
-    active_user.last_login_at = Set(Some(Utc::now().into()));
-    active_user
+    let mut active_account: accounts::ActiveModel = account.clone().into();
+    active_account.last_login_at = Set(Some(Utc::now().into()));
+    active_account
         .update(&state.conn)
         .await
         .map_err(|e| crate::error::Error::Anyhow(anyhow::Error::new(e)))?;
 
     Ok(LoginResponse {
         success: true,
-        user: Some(User {
-            id: user.id.to_string(),
-            email: user.email,
-            username: user.username,
-            created_at: user.created_at.to_rfc3339(),
+        account: Some(Account {
+            id: account.id.to_string(),
+            email: account.email,
+            username: account.username,
+            created_at: account.created_at.to_rfc3339(),
         }),
         access_token,
         refresh_token,
@@ -154,7 +154,7 @@ pub async fn refresh_token(
     let claims = jwt::verify_token(&request.refresh_token, &state.jwt_secret)
         .map_err(|_| crate::error::Error::Forbidden)?; // Use proper error for invalid token
 
-    // In a real app, we should check if the user still exists and is active.
+    // In a real app, we should check if the account still exists and is active.
     // We should also support token rotation (invalidating the old refresh token).
 
     let access_token = jwt::sign_token(&claims.sub, &state.jwt_secret, 3600)
@@ -184,25 +184,25 @@ pub async fn me(
     State(state): State<AppState>,
     _request: MeRequest,
 ) -> Result<MeResponse, crate::error::Error> {
-    // We need to extract the user ID from the context (inserted by middleware).
+    // We need to extract the account ID from the context (inserted by middleware).
     // For now, this is just a placeholder as we haven't implemented the middleware yet.
-    // TODO: Extract user from request extensions/headers
+    // TODO: Extract account from request extensions/headers
 
-    // Assuming we passed auth check and have a user ID (mocked for now)
-    let user_id = Uuid::nil(); // Replace with actual ID from context
+    // Assuming we passed auth check and have an account ID (mocked for now)
+    let account_id = Uuid::nil(); // Replace with actual ID from context
 
-    let user = accounts::Entity::find_by_id(user_id)
+    let account = accounts::Entity::find_by_id(account_id)
         .one(&state.conn)
         .await
         .map_err(|e| crate::error::Error::Anyhow(anyhow::Error::new(e)))?;
 
-    if let Some(user) = user {
+    if let Some(account) = account {
         Ok(MeResponse {
-            user: Some(User {
-                id: user.id.to_string(),
-                email: user.email,
-                username: user.username,
-                created_at: user.created_at.to_rfc3339(),
+            account: Some(Account {
+                id: account.id.to_string(),
+                email: account.email,
+                username: account.username,
+                created_at: account.created_at.to_rfc3339(),
             }),
         })
     } else {

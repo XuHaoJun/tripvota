@@ -31,7 +31,6 @@ export default function RegisterPage() {
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      username: '',
       email: '',
       password: '',
     },
@@ -42,7 +41,7 @@ export default function RegisterPage() {
     try {
       const response = await register({
         email: values.email,
-        username: values.username,
+        username: values.email,
         password: values.password,
       });
 
@@ -72,19 +71,6 @@ export default function RegisterPage() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Username</FormLabel>
-                  <FormControl>
-                    <Input placeholder="jdoe" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="email"

@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 
 import { authFetch } from '@workspace/fetch-ext';

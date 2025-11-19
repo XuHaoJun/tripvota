@@ -48,7 +48,7 @@ export const authFetch: typeof fetch = async (input, init) => {
           const res = await fetch(REFRESH_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh_token: refreshToken }),
+            body: JSON.stringify({ refreshToken }),
           });
 
           if (!res.ok) throw new Error('Refresh request failed');
