@@ -3,10 +3,16 @@ use axum::Router;
 use axum_connect::{futures::Stream, prelude::*};
 use error::Error;
 use proto::hello::*;
+use serde::Deserialize;
 use tower_http::cors::CorsLayer;
 
 // Take a peak at error.rs to see how errors work in axum-connect.
 mod error;
+
+#[derive(Deserialize, Debug)]
+struct AppConfiguration {
+    database_url: String,
+}
 
 mod proto {
     // Include the generated code in a `proto` module.
@@ -22,6 +28,9 @@ mod proto {
 
 #[tokio::main]
 async fn main() {
+    let config: AppConfiguration = read_app_configuration::read_app_configuration(".")
+        .expect("Failed to read app configuration");
+    println!("config: {:?}", config);
     // Build our application with a route. Note the `rpc` method which was added by `axum-connect`.
     // It expect a service method handler, wrapped in it's respective type. The handler (below) is
     // just a normal Rust function. Just like Axum, it also supports extractors!
