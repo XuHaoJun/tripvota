@@ -120,11 +120,9 @@ pub async fn login(
     }
 
     // Generate tokens
-    // TODO: Move secret to config
-    let secret = "secret";
-    let access_token = jwt::sign_token(&user.id.to_string(), secret, 3600) // 1 hour
+    let access_token = jwt::sign_token(&user.id.to_string(), &state.jwt_secret, 3600) // 1 hour
         .map_err(|e| crate::error::Error::Anyhow(e))?;
-    let refresh_token = jwt::sign_token(&user.id.to_string(), secret, 86400 * 7) // 7 days
+    let refresh_token = jwt::sign_token(&user.id.to_string(), &state.jwt_secret, 86400 * 7) // 7 days
         .map_err(|e| crate::error::Error::Anyhow(e))?;
 
     // Update last login
@@ -149,22 +147,21 @@ pub async fn login(
 }
 
 pub async fn refresh_token(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     request: RefreshTokenRequest,
 ) -> Result<RefreshTokenResponse, crate::error::Error> {
     // Verify refresh token
-    let secret = "secret";
-    let claims = jwt::verify_token(&request.refresh_token, secret)
+    let claims = jwt::verify_token(&request.refresh_token, &state.jwt_secret)
         .map_err(|_| crate::error::Error::Forbidden)?; // Use proper error for invalid token
 
     // In a real app, we should check if the user still exists and is active.
     // We should also support token rotation (invalidating the old refresh token).
 
-    let access_token =
-        jwt::sign_token(&claims.sub, secret, 3600).map_err(|e| crate::error::Error::Anyhow(e))?;
+    let access_token = jwt::sign_token(&claims.sub, &state.jwt_secret, 3600)
+        .map_err(|e| crate::error::Error::Anyhow(e))?;
 
     // Optionally rotate refresh token
-    let new_refresh_token = jwt::sign_token(&claims.sub, secret, 86400 * 7)
+    let new_refresh_token = jwt::sign_token(&claims.sub, &state.jwt_secret, 86400 * 7)
         .map_err(|e| crate::error::Error::Anyhow(e))?;
 
     Ok(RefreshTokenResponse {

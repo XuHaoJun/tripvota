@@ -16,11 +16,13 @@ mod error; // Register auth module
 #[derive(Clone)]
 struct AppState {
     conn: DatabaseConnection,
+    jwt_secret: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct AppConfiguration {
     database_url: String,
+    jwt_secret: String,
 }
 
 mod proto {
@@ -43,7 +45,10 @@ async fn main() {
         .await
         .expect("Database connection failed");
 
-    let state = AppState { conn };
+    let state = AppState {
+        conn,
+        jwt_secret: config.jwt_secret,
+    };
 
     // Build our application with a route. Note the `rpc` method which was added by `axum-connect`.
     let app = Router::new()
