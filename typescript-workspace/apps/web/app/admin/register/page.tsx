@@ -8,7 +8,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import * as z from 'zod';
 
 import { AuthService } from '@workspace/proto-gen/src/auth_pb';
 import { Button } from '@workspace/ui/components/button';
@@ -20,7 +19,7 @@ import { registerSchema, RegisterValues } from '@/lib/schemas/auth';
 // Note: Assuming path to generated proto code.
 // If not generated yet, this will be broken.
 
-export default function RegisterPage() {
+function RegisterFormContent() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
@@ -53,68 +52,75 @@ export default function RegisterPage() {
         setError(msg);
         toast.error(msg);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      const msg = e.message || 'An unexpected error occurred';
+      const msg = e instanceof Error ? e.message : 'An unexpected error occurred';
       setError(msg);
       toast.error(msg);
     }
   }
 
   return (
-    <div className="container flex h-screen w-screen flex-col items-center justify-center">
-      <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-        <div className="flex flex-col space-y-2 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
-          <p className="text-muted-foreground text-sm">Enter your details below to create your account</p>
-        </div>
+    <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+      <div className="flex flex-col space-y-2 text-center">
+        <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
+        <p className="text-muted-foreground text-sm">Enter your details below to create your account</p>
+      </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="name@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input placeholder="name@example.com" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input type="password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-            {error && <div className="text-destructive text-sm">{error}</div>}
+          {error && <div className="text-destructive text-sm">{error}</div>}
 
-            <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending && (
-                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              )}
-              Sign In
-            </Button>
-          </form>
-        </Form>
+          <Button type="submit" className="w-full" disabled={isPending}>
+            {isPending && (
+              <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            )}
+            Sign In
+          </Button>
+        </form>
+      </Form>
 
-        <div className="text-muted-foreground px-8 text-center text-sm">
-          Already have an account?{' '}
-          <Link href="/admin/login" className="hover:text-primary underline underline-offset-4">
-            Login
-          </Link>
-        </div>
+      <div className="text-muted-foreground px-8 text-center text-sm">
+        <Link href="/admin/login" className="hover:text-brand underline underline-offset-4">
+          Already have an account? Login
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <div className="flex h-screen w-screen flex-col items-center justify-center">
+      <div className="container">
+        <RegisterFormContent />
       </div>
     </div>
   );

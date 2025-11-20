@@ -41,7 +41,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </div>
             </div>
           </header>
-          <main className="flex-1 space-y-4 p-8 pt-6">{children}</main>
+          <main className="flex flex-1">{children}</main>
         </div>
       </AdminAuthGuard>
     </RpcClientProviderWithAuth>

@@ -134,8 +134,10 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="container flex h-screen w-screen flex-col items-center justify-center">
-      <LoginForm />
+    <div className="flex h-screen w-screen flex-col items-center justify-center">
+      <div className="container">
+        <LoginForm />
+      </div>
     </div>
   );
 }
