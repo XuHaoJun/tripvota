@@ -11,27 +11,37 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
+    "@connectrpc/connect-query": "^2.2.0",
+    "@hookform/resolvers": "^5.2.2",
+    "@tanstack/react-query": "^5.90.10",
+    "@workspace/fetch-ext": "workspace:*",
+    "@workspace/proto-gen": "workspace:*",
     "@workspace/rpc-client": "workspace:*",
     "@workspace/ui": "workspace:*",
     "date-fns": "^4.1.0",
-    "lucide-react": "^0.544.0",
-    "next": "^16.0.1",
+    "jotai": "^2.15.1",
+    "lucide-react": "^0.554.0",
+    "next": "^16.0.3",
     "next-themes": "^0.4.6",
     "react": "^19.2.0",
     "react-big-calendar": "^1.19.4",
     "react-dom": "^19.2.0",
-    "react-resizable-panels": "^3.0.6"
+    "react-hook-form": "^7.66.1",
+    "react-resizable-panels": "^3.0.6",
+    "sonner": "^2.0.7",
+    "usehooks-ts": "^3.1.1",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.13",
-    "@types/node": "^24.5.2",
-    "@types/react": "^19.2.0",
+    "@tailwindcss/postcss": "^4.1.17",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.6",
     "@types/react-big-calendar": "^1.16.3",
-    "@types/react-dom": "^19.2.0",
+    "@types/react-dom": "^19.2.3",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
-    "eslint": "^9.36.0",
-    "tailwindcss": "^4.1.13",
+    "eslint": "^9.39.1",
+    "tailwindcss": "^4.1.17",
     "typescript": "^5.9.2"
   }
 }
