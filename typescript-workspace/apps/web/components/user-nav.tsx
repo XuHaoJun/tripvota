@@ -4,7 +4,6 @@ import { useMutation } from '@connectrpc/connect-query';
 import { useAtom } from 'jotai';
 import { useRouter } from 'next/navigation';
 
-import { clearTokens } from '@workspace/fetch-ext';
 import { AuthService } from '@workspace/proto-gen/src/auth_pb';
 import { Avatar, AvatarFallback, AvatarImage } from '@workspace/ui/components/avatar';
 import { Button } from '@workspace/ui/components/button';
@@ -20,11 +19,13 @@ import {
 } from '@workspace/ui/components/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@workspace/ui/components/tooltip';
 
-import { accountAtom } from '@/atoms/auth';
+import { accountAtom } from '@/atoms/admin/auth';
+import { useAdminAuthFetch } from '@/hooks/admin/use-admin-auth-fetch';
 
 export function UserNav() {
   const [user, setUser] = useAtom(accountAtom);
   const router = useRouter();
+  const { clearTokens } = useAdminAuthFetch();
   const { mutateAsync: logout } = useMutation(AuthService.method.logout);
 
   const handleLogout = async () => {

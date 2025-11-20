@@ -10,13 +10,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
-import { setTokens } from '@workspace/fetch-ext';
 import { AuthService } from '@workspace/proto-gen/src/auth_pb';
 import { Button } from '@workspace/ui/components/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@workspace/ui/components/form';
 import { Input } from '@workspace/ui/components/input';
 
-import { accountAtom } from '@/atoms/auth';
+import { accountAtom } from '@/atoms/admin/auth';
+import { useAdminAuthFetch } from '@/hooks/admin/use-admin-auth-fetch';
 import { loginSchema, LoginValues } from '@/lib/schemas/auth';
 
 function LoginFormContent() {
@@ -25,6 +25,7 @@ function LoginFormContent() {
   const registered = searchParams.get('registered');
   const [error, setError] = useState<string | null>(null);
   const setAccount = useSetAtom(accountAtom);
+  const { setTokens } = useAdminAuthFetch();
 
   const { mutateAsync: login, isPending } = useMutation(AuthService.method.login);
 
