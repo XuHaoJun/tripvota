@@ -26,7 +26,7 @@ export function TripCardEditSheet({ item, onClose, onUpdate, onDelete, hasConfli
     if (item) {
       setTitle(item.title);
       setStartTime(item.startTime || new Date());
-      setEndTime(item.endTime || new Date(item.startTime?.getTime() + 60 * 60 * 1000) || new Date());
+      setEndTime(item.endTime || (item.startTime ? new Date(item.startTime.getTime() + 60 * 60 * 1000) : new Date()));
     }
   }, [item]);
 
