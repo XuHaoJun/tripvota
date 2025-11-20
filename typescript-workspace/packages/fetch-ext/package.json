@@ -7,16 +7,16 @@
   },
   "scripts": {},
   "dependencies": {
-    "usehooks-ts": "^3.1.1",
-    "jotai": "^2.15.1"
+    "jotai": "^2.15.1",
+    "usehooks-ts": "^3.1.1"
   },
   "peerDependencies": {
     "react": "^19.0.0"
   },
   "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.6",
     "@workspace/typescript-config": "workspace:*",
-    "@types/node": "^20.0.0",
-    "@types/react": "^19.0.0",
     "react": "^19.0.0",
     "typescript": "^5.0.0"
   }
