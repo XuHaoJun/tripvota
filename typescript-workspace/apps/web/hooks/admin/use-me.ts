@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 import { createConnectQueryKey, useQuery } from '@connectrpc/connect-query';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,21 +13,17 @@ export function useMe(): ReturnType<
 > {
   const enabled = useAtomValue(accessTokenIsActiveAtom);
   const queryClient = useQueryClient();
-  const prevEnabledRef = useRef(enabled);
-
-  console.log('enabled', enabled);
 
   // Clear query result when enabled changes from true to false
   useEffect(() => {
-    if (prevEnabledRef.current === true && enabled === false) {
-      queryClient.resetQueries({
+    if (enabled === false) {
+      queryClient.removeQueries({
         queryKey: createConnectQueryKey({
           schema: AuthService.method.me,
           cardinality: 'finite',
         }),
       });
     }
-    prevEnabledRef.current = enabled;
   }, [enabled, queryClient]);
 
   return useQuery(AuthService.method.me, {}, { enabled, refetchOnWindowFocus: false, refetchOnMount: false });

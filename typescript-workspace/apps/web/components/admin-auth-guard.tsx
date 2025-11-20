@@ -5,10 +5,11 @@ import { useEffect, useRef } from 'react';
 import { useAtomValue } from 'jotai';
 import { useRouter, usePathname } from 'next/navigation';
 
-import { accessTokenAtom } from '@/atoms/admin/auth';
+import { accessTokenAtom, isLoadingAccessTokenFromLocalStorageAtom } from '@/atoms/admin/auth';
 
 export function AdminAuthGuard({ children }: { children: React.ReactNode }) {
   const accessToken = useAtomValue(accessTokenAtom);
+  const isLoadingAccessTokenFromLocalStorage = useAtomValue(isLoadingAccessTokenFromLocalStorageAtom);
   const router = useRouter();
   const pathname = usePathname();
   const hasRedirectedRef = useRef(false);
@@ -18,6 +19,10 @@ export function AdminAuthGuard({ children }: { children: React.ReactNode }) {
   const isAuthenticated = !!accessToken;
 
   useEffect(() => {
+    if (isLoadingAccessTokenFromLocalStorage) {
+      return;
+    }
+
     // Prevent multiple redirects
     if (hasRedirectedRef.current) {
       return;
@@ -32,7 +37,7 @@ export function AdminAuthGuard({ children }: { children: React.ReactNode }) {
     if (!isAuthPage) {
       router.push(`/admin/login?redirect=${encodeURIComponent(pathname)}`);
     }
-  }, [isAuthenticated, router, pathname, isAuthPage]);
+  }, [isAuthenticated, router, pathname, isAuthPage, isLoadingAccessTokenFromLocalStorage]);
 
   if (!isAuthenticated && !isAuthPage) {
     return <div>Loading...</div>;

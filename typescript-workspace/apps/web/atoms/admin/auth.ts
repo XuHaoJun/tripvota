@@ -24,9 +24,14 @@ export interface LocalStorageAuthTokens {
  */
 
 // Create atoms for each token
-export const accessTokenAtom = atom<string | null>(null);
-export const refreshTokenAtom = atom<string | null>(null);
+// Internal writable atoms
+const accessTokenAtomBase = atom<string | null>(null);
+const refreshTokenAtomBase = atom<string | null>(null);
+// Export readonly atoms
+export const accessTokenAtom = atom((get) => get(accessTokenAtomBase));
+export const refreshTokenAtom = atom((get) => get(refreshTokenAtomBase));
 export const isRefreshingAtom = isRefreshingAtomFromFetch;
+export const isLoadingAccessTokenFromLocalStorageAtom = atom(true);
 
 export const accessTokenIsActiveAtom = atom((get) => {
   const accessToken = get(accessTokenAtom);
@@ -35,35 +40,31 @@ export const accessTokenIsActiveAtom = atom((get) => {
 });
 
 export function useLocalStorageSync() {
-  // useLocalStorage from usehooks-ts handles storage events automatically
-  const [accessToken, setAccessToken] = useLocalStorage<string | null>(ADMIN_ACCESS_TOKEN_KEY, null);
-  const [refreshToken, setRefreshToken] = useLocalStorage<string | null>(ADMIN_REFRESH_TOKEN_KEY, null);
+  const [accessToken] = useLocalStorage<string | null>(ADMIN_ACCESS_TOKEN_KEY, null);
+  const [refreshToken] = useLocalStorage<string | null>(ADMIN_REFRESH_TOKEN_KEY, null);
   const [isRefreshing, setIsRefreshing] = useAtom(isRefreshingAtom);
 
   // Sync useLocalStorage state to atoms
-  const setAccessTokenAtom = useSetAtom(accessTokenAtom);
-  const setRefreshTokenAtom = useSetAtom(refreshTokenAtom);
+  const setAccessTokenAtom = useSetAtom(accessTokenAtomBase);
+  const setRefreshTokenAtom = useSetAtom(refreshTokenAtomBase);
+  const setIsLoadingAccessTokenFromLocalStorageAtom = useSetAtom(isLoadingAccessTokenFromLocalStorageAtom);
 
   // Read atom values to detect changes
-  const currentAccessToken = useAtomValue(accessTokenAtom);
-  const currentRefreshToken = useAtomValue(refreshTokenAtom);
   const currentIsRefreshing = useAtomValue(isRefreshingAtom);
 
   // Track if we're updating from atom to prevent loops
-  const updatingFromAtomRef = useRef({ accessToken: false, refreshToken: false, isRefreshing: false });
+  const updatingFromAtomRef = useRef({ isRefreshing: false });
 
   // Sync localStorage -> atoms (when localStorage changes from another tab via storage event)
   // useLocalStorage already handles the storage event, so we just sync its state to atoms
+  // Note: Both accessTokenAtom and refreshTokenAtom are readonly and only sync FROM localStorage, not back to it
   useEffect(() => {
-    if (!updatingFromAtomRef.current.accessToken) {
-      setAccessTokenAtom(accessToken);
-    }
-  }, [accessToken, setAccessTokenAtom]);
+    setAccessTokenAtom(accessToken);
+    setIsLoadingAccessTokenFromLocalStorageAtom(false);
+  }, [accessToken, setAccessTokenAtom, setIsLoadingAccessTokenFromLocalStorageAtom]);
 
   useEffect(() => {
-    if (!updatingFromAtomRef.current.refreshToken) {
-      setRefreshTokenAtom(refreshToken);
-    }
+    setRefreshTokenAtom(refreshToken);
   }, [refreshToken, setRefreshTokenAtom]);
 
   useEffect(() => {
@@ -74,27 +75,4 @@ export function useLocalStorageSync() {
       updatingFromAtomRef.current.isRefreshing = false;
     }, 0);
   }, [currentIsRefreshing, isRefreshing, setIsRefreshing]);
-
-  // Sync atoms -> localStorage (when atom changes in current tab)
-  useEffect(() => {
-    if (currentAccessToken !== accessToken) {
-      updatingFromAtomRef.current.accessToken = true;
-      setAccessToken(currentAccessToken);
-      // Reset flag after a tick to allow next sync
-      setTimeout(() => {
-        updatingFromAtomRef.current.accessToken = false;
-      }, 0);
-    }
-  }, [currentAccessToken, accessToken, setAccessToken]);
-
-  useEffect(() => {
-    if (currentRefreshToken !== refreshToken) {
-      updatingFromAtomRef.current.refreshToken = true;
-      setRefreshToken(currentRefreshToken);
-      // Reset flag after a tick to allow next sync
-      setTimeout(() => {
-        updatingFromAtomRef.current.refreshToken = false;
-      }, 0);
-    }
-  }, [currentRefreshToken, refreshToken, setRefreshToken]);
 }

@@ -1,7 +1,6 @@
 'use client';
 
-import { createConnectQueryKey, useMutation } from '@connectrpc/connect-query';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@connectrpc/connect-query';
 import { useRouter } from 'next/navigation';
 
 import { AuthService } from '@workspace/proto-gen/src/auth_pb';

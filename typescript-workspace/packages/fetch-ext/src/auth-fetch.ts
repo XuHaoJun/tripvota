@@ -112,7 +112,6 @@ export class AuthFetchBuilder {
 
       const authFetch: typeof fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
         const token = getAccessToken();
-        console.log('authFetch token', token);
 
         // Clone headers to avoid mutation issues
         const headers = new Headers(init?.headers);
