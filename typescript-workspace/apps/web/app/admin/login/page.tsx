@@ -2,9 +2,8 @@
 
 import { useState, Suspense } from 'react';
 
-import { createConnectQueryKey, useMutation } from '@connectrpc/connect-query';
+import { useMutation } from '@connectrpc/connect-query';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -53,8 +52,8 @@ function LoginFormContent() {
         setError('Invalid email or password');
         toast.error('Invalid email or password');
       }
-    } catch (e: any) {
-      console.error(e);
+    } catch (e: unknown) {
+      console.error(e instanceof Error ? e.message : 'An unexpected error occurred');
       setError('An unexpected error occurred');
       toast.error('An unexpected error occurred');
     }
