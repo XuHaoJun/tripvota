@@ -48,7 +48,7 @@ pub async fn register(
 
     // Hash password
     let password_hash =
-        password::hash_password(&request.password).map_err(|e| crate::error::Error::Anyhow(e))?;
+        password::hash_password(&request.password).map_err(crate::error::Error::Anyhow)?;
 
     // Create account
     let new_account = accounts::ActiveModel {
@@ -104,8 +104,7 @@ pub async fn login(
 
     // Verify password
     let valid = if let Some(hash) = &account.password_hash {
-        password::verify_password(&request.password, hash)
-            .map_err(|e| crate::error::Error::Anyhow(e))?
+        password::verify_password(&request.password, hash).map_err(crate::error::Error::Anyhow)?
     } else {
         false // No password hash (federated only?)
     };
@@ -121,9 +120,9 @@ pub async fn login(
 
     // Generate tokens
     let access_token = jwt::sign_token(&account.id.to_string(), &state.jwt_secret, 3600) // 1 hour
-        .map_err(|e| crate::error::Error::Anyhow(e))?;
+        .map_err(crate::error::Error::Anyhow)?;
     let refresh_token = jwt::sign_token(&account.id.to_string(), &state.jwt_secret, 86400 * 7) // 7 days
-        .map_err(|e| crate::error::Error::Anyhow(e))?;
+        .map_err(crate::error::Error::Anyhow)?;
 
     // Update last login
     let mut active_account: accounts::ActiveModel = account.clone().into();
@@ -158,11 +157,11 @@ pub async fn refresh_token(
     // We should also support token rotation (invalidating the old refresh token).
 
     let access_token = jwt::sign_token(&claims.sub, &state.jwt_secret, 3600)
-        .map_err(|e| crate::error::Error::Anyhow(e))?;
+        .map_err(crate::error::Error::Anyhow)?;
 
     // Optionally rotate refresh token
     let new_refresh_token = jwt::sign_token(&claims.sub, &state.jwt_secret, 86400 * 7)
-        .map_err(|e| crate::error::Error::Anyhow(e))?;
+        .map_err(crate::error::Error::Anyhow)?;
 
     Ok(RefreshTokenResponse {
         success: true,
