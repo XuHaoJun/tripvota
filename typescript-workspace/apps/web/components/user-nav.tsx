@@ -1,7 +1,6 @@
 'use client';
 
 import { useMutation } from '@connectrpc/connect-query';
-import { useRouter } from 'next/navigation';
 
 import { AuthService } from '@workspace/proto-gen/src/auth_pb';
 import { Avatar, AvatarFallback, AvatarImage } from '@workspace/ui/components/avatar';
@@ -24,7 +23,6 @@ import { useMe } from '@/hooks/admin/use-me';
 export function UserNav() {
   const { data: meResponse } = useMe();
   const user = meResponse?.account;
-  const router = useRouter();
   const { clearTokens } = useAdminAuthFetch();
   const { mutateAsync: logout } = useMutation(AuthService.method.logout);
 
@@ -35,7 +33,9 @@ export function UserNav() {
       console.error('Logout failed', e);
     } finally {
       clearTokens();
-      router.push('/admin/login');
+      // Hard redirect to prevent auth guard from adding redirect param
+      // This ensures manual logout goes directly to login without query params
+      window.location.href = '/admin/login';
     }
   };
 
