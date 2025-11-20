@@ -2,9 +2,9 @@
 
 import { useState, Suspense } from 'react';
 
-import { useMutation } from '@connectrpc/connect-query';
+import { createConnectQueryKey, useMutation } from '@connectrpc/connect-query';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useSetAtom } from 'jotai';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -15,7 +15,6 @@ import { Button } from '@workspace/ui/components/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@workspace/ui/components/form';
 import { Input } from '@workspace/ui/components/input';
 
-import { accountAtom } from '@/atoms/admin/auth';
 import { useAdminAuthFetch } from '@/hooks/admin/use-admin-auth-fetch';
 import { loginSchema, LoginValues } from '@/lib/schemas/auth';
 
@@ -24,7 +23,6 @@ function LoginFormContent() {
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
   const [error, setError] = useState<string | null>(null);
-  const setAccount = useSetAtom(accountAtom);
   const { setTokens } = useAdminAuthFetch();
 
   const { mutateAsync: login, isPending } = useMutation(AuthService.method.login);
@@ -48,8 +46,6 @@ function LoginFormContent() {
       if (response.success && response.account) {
         // Save tokens
         setTokens(response.accessToken, response.refreshToken);
-        // Update atom
-        setAccount(response.account);
         // Redirect
         toast.success('Logged in successfully');
         router.push('/admin/dashboard'); // Assuming dashboard exists

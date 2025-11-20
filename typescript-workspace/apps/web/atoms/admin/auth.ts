@@ -1,13 +1,10 @@
 import { useEffect, useRef } from 'react';
 
-import { atom, useAtomValue, useSetAtom } from 'jotai';
+import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useLocalStorage } from 'usehooks-ts';
 
-import { Account } from '@workspace/proto-gen/src/auth_pb';
-
 import { ADMIN_ACCESS_TOKEN_KEY, ADMIN_REFRESH_TOKEN_KEY } from '@/constants/auth';
-
-export const accountAtom = atom<Account | null>(null);
+import { isRefreshingAtom as isRefreshingAtomFromFetch } from '@/hooks/admin/use-admin-auth-fetch';
 
 export interface LocalStorageAuthTokens {
   accessToken: string | null;
@@ -29,35 +26,19 @@ export interface LocalStorageAuthTokens {
 // Create atoms for each token
 export const accessTokenAtom = atom<string | null>(null);
 export const refreshTokenAtom = atom<string | null>(null);
+export const isRefreshingAtom = isRefreshingAtomFromFetch;
 
-/**
- * React hook that bridges useLocalStorage from usehooks-ts with Jotai atoms.
- * This hook:
- * 1. Uses useLocalStorage to manage localStorage state (handles storage events automatically)
- * 2. Syncs the localStorage value with the Jotai atom
- * 3. Updates localStorage when the atom changes
- *
- * useLocalStorage from usehooks-ts already handles:
- * - Cross-tab synchronization via storage events
- * - SSR safety
- * - Error handling
- *
- * @example
- * ```tsx
- * // In a component (e.g., AdminLayout):
- * import { useLocalStorageSync } from '@/atoms/admin/auth';
- *
- * function AdminLayout({ children }) {
- *   // This enables cross-tab sync automatically via useLocalStorage
- *   useLocalStorageSync();
- *   return <>{children}</>;
- * }
- * ```
- */
+export const accessTokenIsActiveAtom = atom((get) => {
+  const accessToken = get(accessTokenAtom);
+  const isRefreshing = get(isRefreshingAtom);
+  return Boolean(accessToken) && !isRefreshing;
+});
+
 export function useLocalStorageSync() {
   // useLocalStorage from usehooks-ts handles storage events automatically
   const [accessToken, setAccessToken] = useLocalStorage<string | null>(ADMIN_ACCESS_TOKEN_KEY, null);
   const [refreshToken, setRefreshToken] = useLocalStorage<string | null>(ADMIN_REFRESH_TOKEN_KEY, null);
+  const [isRefreshing, setIsRefreshing] = useAtom(isRefreshingAtom);
 
   // Sync useLocalStorage state to atoms
   const setAccessTokenAtom = useSetAtom(accessTokenAtom);
@@ -66,9 +47,10 @@ export function useLocalStorageSync() {
   // Read atom values to detect changes
   const currentAccessToken = useAtomValue(accessTokenAtom);
   const currentRefreshToken = useAtomValue(refreshTokenAtom);
+  const currentIsRefreshing = useAtomValue(isRefreshingAtom);
 
   // Track if we're updating from atom to prevent loops
-  const updatingFromAtomRef = useRef({ accessToken: false, refreshToken: false });
+  const updatingFromAtomRef = useRef({ accessToken: false, refreshToken: false, isRefreshing: false });
 
   // Sync localStorage -> atoms (when localStorage changes from another tab via storage event)
   // useLocalStorage already handles the storage event, so we just sync its state to atoms
@@ -83,6 +65,15 @@ export function useLocalStorageSync() {
       setRefreshTokenAtom(refreshToken);
     }
   }, [refreshToken, setRefreshTokenAtom]);
+
+  useEffect(() => {
+    if (currentIsRefreshing !== isRefreshing) {
+      setIsRefreshing(Boolean(currentIsRefreshing));
+    }
+    setTimeout(() => {
+      updatingFromAtomRef.current.isRefreshing = false;
+    }, 0);
+  }, [currentIsRefreshing, isRefreshing, setIsRefreshing]);
 
   // Sync atoms -> localStorage (when atom changes in current tab)
   useEffect(() => {

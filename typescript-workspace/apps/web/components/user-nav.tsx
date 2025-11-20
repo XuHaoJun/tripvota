@@ -1,7 +1,7 @@
 'use client';
 
-import { useMutation } from '@connectrpc/connect-query';
-import { useAtom } from 'jotai';
+import { createConnectQueryKey, useMutation } from '@connectrpc/connect-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 
 import { AuthService } from '@workspace/proto-gen/src/auth_pb';
@@ -19,11 +19,12 @@ import {
 } from '@workspace/ui/components/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@workspace/ui/components/tooltip';
 
-import { accountAtom } from '@/atoms/admin/auth';
 import { useAdminAuthFetch } from '@/hooks/admin/use-admin-auth-fetch';
+import { useMe } from '@/hooks/admin/use-me';
 
 export function UserNav() {
-  const [user, setUser] = useAtom(accountAtom);
+  const { data: meResponse } = useMe();
+  const user = meResponse?.account;
   const router = useRouter();
   const { clearTokens } = useAdminAuthFetch();
   const { mutateAsync: logout } = useMutation(AuthService.method.logout);
@@ -35,7 +36,6 @@ export function UserNav() {
       console.error('Logout failed', e);
     } finally {
       clearTokens();
-      setUser(null);
       router.push('/admin/login');
     }
   };

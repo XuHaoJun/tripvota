@@ -4,3 +4,6 @@
 [submodule "learn-projects/connect-query-es"]
 	path = learn-projects/connect-query-es
 	url = git@github.com:connectrpc/connect-query-es.git
+[submodule "learn-projects/axum-connect"]
+	path = learn-projects/axum-connect
+	url = git@github.com:AThilenius/axum-connect.git

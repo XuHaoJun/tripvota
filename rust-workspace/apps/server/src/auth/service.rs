@@ -15,6 +15,36 @@ use workspace_entity::accounts;
 
 use crate::AppState;
 use axum::extract::State;
+use axum::http::{self, HeaderMap};
+use axum_connect::error::RpcError;
+use axum_connect::parts::RpcFromRequestParts;
+use prost::Message;
+
+// Wrapper type to allow HeaderMap as an extractor in axum-connect handlers
+pub struct Headers(pub HeaderMap);
+
+impl std::ops::Deref for Headers {
+    type Target = HeaderMap;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+// Implement RpcFromRequestParts for our local Headers type
+#[async_trait::async_trait]
+impl<M> RpcFromRequestParts<M, crate::AppState> for Headers
+where
+    M: Message,
+{
+    type Rejection = RpcError;
+
+    async fn rpc_from_request_parts(
+        parts: &mut http::request::Parts,
+        _state: &crate::AppState,
+    ) -> Result<Self, Self::Rejection> {
+        Ok(Headers(parts.headers.clone()))
+    }
+}
 
 pub async fn register(
     State(state): State<AppState>,
@@ -179,16 +209,37 @@ pub async fn logout(
     Ok(LogoutResponse { success: true })
 }
 
+fn extract_account_id_from_headers(
+    headers: &Headers,
+    jwt_secret: &str,
+) -> Result<Uuid, crate::error::Error> {
+    // Extract Authorization header
+    let auth_header = headers
+        .get("authorization")
+        .ok_or(crate::error::Error::Forbidden)?
+        .to_str()
+        .map_err(|_| crate::error::Error::Forbidden)?;
+
+    // Parse Bearer token
+    let token = auth_header
+        .strip_prefix("Bearer ")
+        .ok_or(crate::error::Error::Forbidden)?;
+
+    // Verify token and extract account ID
+    let claims =
+        jwt::verify_token(token, jwt_secret).map_err(|_| crate::error::Error::Forbidden)?;
+
+    let account_id = Uuid::parse_str(&claims.sub).map_err(|_| crate::error::Error::Forbidden)?;
+
+    Ok(account_id)
+}
+
 pub async fn me(
     State(state): State<AppState>,
+    headers: Headers,
     _request: MeRequest,
 ) -> Result<MeResponse, crate::error::Error> {
-    // We need to extract the account ID from the context (inserted by middleware).
-    // For now, this is just a placeholder as we haven't implemented the middleware yet.
-    // TODO: Extract account from request extensions/headers
-
-    // Assuming we passed auth check and have an account ID (mocked for now)
-    let account_id = Uuid::nil(); // Replace with actual ID from context
+    let account_id = extract_account_id_from_headers(&headers, &state.jwt_secret)?;
 
     let account = accounts::Entity::find_by_id(account_id)
         .one(&state.conn)

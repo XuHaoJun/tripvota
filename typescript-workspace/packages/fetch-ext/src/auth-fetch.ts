@@ -1,5 +1,8 @@
 import { useCallback, useRef } from 'react';
 
+import { atom, useAtom } from 'jotai';
+import { useLocalStorage } from 'usehooks-ts';
+
 export interface AuthFetchConfig {
   accessTokenKey?: string;
   refreshTokenKey?: string;
@@ -15,9 +18,12 @@ export interface UseAuthFetchReturn {
   getRefreshToken: () => string | null;
   setTokens: (access: string, refresh: string) => void;
   clearTokens: () => void;
+  isRefreshingAtom: ReturnType<typeof atom<boolean>>;
 }
 
 export class AuthFetchBuilder {
+  public readonly isRefreshingAtom = atom<boolean>(false);
+
   private config: Required<AuthFetchConfig> = {
     accessTokenKey: 'access_token',
     refreshTokenKey: 'refresh_token',
@@ -59,113 +65,132 @@ export class AuthFetchBuilder {
 
   build(): () => UseAuthFetchReturn {
     const config = this.config;
+    const isRefreshingAtom = this.isRefreshingAtom;
 
     return function useAuthFetch(): UseAuthFetchReturn {
+      const [accessToken, setAccessToken, removeAccessToken] = useLocalStorage<string | null>(
+        config.accessTokenKey,
+        null,
+      );
+      const [refreshToken, setRefreshToken, removeRefreshToken] = useLocalStorage<string | null>(
+        config.refreshTokenKey,
+        null,
+      );
+      const [isRefreshing, setIsRefreshing] = useAtom(isRefreshingAtom);
       const isRefreshingRef = useRef(false);
       const refreshPromiseRef = useRef<Promise<void> | null>(null);
 
-      const getAccessToken = useCallback(() => {
-        return typeof window !== 'undefined' ? localStorage.getItem(config.accessTokenKey) : null;
-      }, []);
-
-      const getRefreshToken = useCallback(() => {
-        return typeof window !== 'undefined' ? localStorage.getItem(config.refreshTokenKey) : null;
-      }, []);
-
-      const setTokens = useCallback((access: string, refresh: string) => {
+      const getAccessToken = () => {
+        // Read directly from localStorage to get the latest value immediately
+        // This ensures we have the token right after setTokens is called
         if (typeof window !== 'undefined') {
-          localStorage.setItem(config.accessTokenKey, access);
-          localStorage.setItem(config.refreshTokenKey, refresh);
+          const stored = JSON.parse(localStorage.getItem(config.accessTokenKey) || 'null');
+          return stored ? stored : null;
         }
-      }, []);
+        return accessToken;
+      };
 
-      const clearTokens = useCallback(() => {
+      const getRefreshToken = () => {
+        // Read directly from localStorage to get the latest value immediately
+        // This ensures we have the token right after setTokens is called
         if (typeof window !== 'undefined') {
-          localStorage.removeItem(config.accessTokenKey);
-          localStorage.removeItem(config.refreshTokenKey);
+          const stored = JSON.parse(localStorage.getItem(config.refreshTokenKey) || 'null');
+          return stored ? stored : null;
         }
-      }, []);
+        return refreshToken;
+      };
 
-      const authFetch = useCallback<typeof fetch>(
-        async (input: RequestInfo | URL, init?: RequestInit) => {
-          const token = getAccessToken();
+      const setTokens = (access: string, refresh: string) => {
+        setAccessToken(access);
+        setRefreshToken(refresh);
+      };
 
-          // Clone headers to avoid mutation issues
-          const headers = new Headers(init?.headers);
+      const clearTokens = () => {
+        removeAccessToken();
+        removeRefreshToken();
+      };
 
-          if (token) {
-            headers.set('Authorization', `Bearer ${token}`);
+      const authFetch: typeof fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const token = getAccessToken();
+        console.log('authFetch token', token);
+
+        // Clone headers to avoid mutation issues
+        const headers = new Headers(init?.headers);
+
+        if (token) {
+          headers.set('Authorization', `Bearer ${token}`);
+        }
+
+        const response = await fetch(input, { ...init, headers });
+
+        if (response.status === 401) {
+          const refreshToken = getRefreshToken();
+          if (!refreshToken) {
+            // No refresh token, can't refresh.
+            clearTokens();
+            return response;
           }
 
-          const response = await fetch(input, { ...init, headers });
+          if (!isRefreshingRef.current) {
+            isRefreshingRef.current = true;
+            refreshPromiseRef.current = (async () => {
+              try {
+                setIsRefreshing(true);
+                // Perform refresh
+                const res = await fetch(config.refreshUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ refreshToken }),
+                });
 
-          if (response.status === 401) {
-            const refreshToken = getRefreshToken();
-            if (!refreshToken) {
-              // No refresh token, can't refresh.
-              clearTokens();
-              return response;
-            }
+                if (!res.ok) throw new Error('Refresh request failed');
 
-            if (!isRefreshingRef.current) {
-              isRefreshingRef.current = true;
-              refreshPromiseRef.current = (async () => {
-                try {
-                  // Perform refresh
-                  const res = await fetch(config.refreshUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ refreshToken }),
-                  });
-
-                  if (!res.ok) throw new Error('Refresh request failed');
-
-                  const data = await res.json();
-                  // Assuming RefreshTokenResponse structure: { success, access_token, refresh_token }
-                  if (data.success && data.access_token) {
-                    setTokens(data.access_token, data.refresh_token || refreshToken);
-                  } else {
-                    throw new Error('Refresh logic failed');
-                  }
-                } catch (e) {
-                  console.error('Token refresh failed', e);
-                  clearTokens();
-                  // Redirect to login if in browser
-                  if (typeof window !== 'undefined') {
-                    const currentPath = window.location.pathname;
-                    if (config.shouldRedirect(currentPath)) {
-                      const redirectUrl = `${config.loginPath}?${config.redirectQueryParam}=${encodeURIComponent(currentPath)}`;
-                      window.location.href = redirectUrl;
-                    }
-                  }
-                  throw e;
-                } finally {
-                  isRefreshingRef.current = false;
-                  refreshPromiseRef.current = null;
+                const data = await res.json();
+                // Assuming RefreshTokenResponse structure: { success, access_token, refresh_token }
+                if (data.success && data.access_token) {
+                  setTokens(data.access_token, data.refresh_token || refreshToken);
+                } else {
+                  throw new Error('Refresh logic failed');
                 }
-              })();
-            }
-
-            try {
-              await refreshPromiseRef.current;
-              // Retry with new token
-              const newToken = getAccessToken();
-              if (newToken) {
-                headers.set('Authorization', `Bearer ${newToken}`);
-                return fetch(input, { ...init, headers });
+              } catch (e) {
+                console.error('Token refresh failed', e);
+                clearTokens();
+                // Redirect to login if in browser
+                if (typeof window !== 'undefined') {
+                  const currentPath = window.location.pathname;
+                  if (config.shouldRedirect(currentPath)) {
+                    const redirectUrl = `${config.loginPath}?${config.redirectQueryParam}=${encodeURIComponent(currentPath)}`;
+                    window.location.href = redirectUrl;
+                  }
+                }
+                throw e;
+              } finally {
+                setIsRefreshing(false);
+                isRefreshingRef.current = false;
+                refreshPromiseRef.current = null;
               }
-            } catch (e) {
-              // Refresh failed, return original 401 response
-              return response;
-            }
+            })();
           }
 
-          return response;
-        },
-        [getAccessToken, getRefreshToken, setTokens, clearTokens],
-      );
+          try {
+            await refreshPromiseRef.current;
+            // Retry with new token
+            const newToken = getAccessToken();
+            if (newToken) {
+              headers.set('Authorization', `Bearer ${newToken}`);
+              return fetch(input, { ...init, headers });
+            }
+          } catch (e) {
+            // Refresh failed, return original 401 response
+            return response;
+          }
+        }
+
+        return response;
+      };
 
       return {
+        isRefreshingAtom: isRefreshingAtom,
         authFetch,
         getAccessToken,
         getRefreshToken,

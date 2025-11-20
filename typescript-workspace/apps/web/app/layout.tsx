@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 
 import { Geist, Geist_Mono } from 'next/font/google';
 
-import { RpcClientProvider } from '@workspace/rpc-client';
 import '@workspace/ui/globals.css';
 
 import { Providers } from '@/components/providers';

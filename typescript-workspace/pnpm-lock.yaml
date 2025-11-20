@@ -38,6 +38,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.66.1(react@19.2.0))
+      '@tanstack/react-query':
+        specifier: ^5.90.5
+        version: 5.90.5(react@19.2.0)
       '@workspace/fetch-ext':
         specifier: workspace:*
         version: link:../../packages/fetch-ext
@@ -164,6 +167,13 @@ importers:
         version: 8.44.1(eslint@9.36.0(jiti@2.6.0))(typescript@5.9.3)
 
   packages/fetch-ext:
+    dependencies:
+      jotai:
+        specifier: ^2.15.1
+        version: 2.15.1(@babel/template@7.27.2)(@types/react@19.2.2)(react@19.2.0)
+      usehooks-ts:
+        specifier: ^3.1.1
+        version: 3.1.1(react@19.2.0)
     devDependencies:
       '@types/node':
         specifier: ^20.0.0

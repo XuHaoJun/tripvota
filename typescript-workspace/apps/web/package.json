@@ -13,6 +13,7 @@
   "dependencies": {
     "@connectrpc/connect-query": "^2.2.0",
     "@hookform/resolvers": "^5.2.2",
+    "@tanstack/react-query": "^5.90.5",
     "@workspace/fetch-ext": "workspace:*",
     "@workspace/proto-gen": "workspace:*",
     "@workspace/rpc-client": "workspace:*",

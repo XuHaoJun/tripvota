@@ -12,3 +12,5 @@ const authFetchBuilder = new AuthFetchBuilder()
 
 // Export the hook for use in components
 export const useAdminAuthFetch = authFetchBuilder.build();
+
+export const isRefreshingAtom = authFetchBuilder.isRefreshingAtom;

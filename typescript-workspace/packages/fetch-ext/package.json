@@ -6,7 +6,10 @@
     ".": "./src/index.ts"
   },
   "scripts": {},
-  "dependencies": {},
+  "dependencies": {
+    "usehooks-ts": "^3.1.1",
+    "jotai": "^2.15.1"
+  },
   "peerDependencies": {
     "react": "^19.0.0"
   },
