@@ -354,3 +354,34 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: |
           bash scripts/changed-rust-crates.sh
+
+  build_docker_images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build server image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/server.Dockerfile
+          push: false
+          tags: tripvota-server:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build web image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/web.Dockerfile
+          push: false
+          tags: tripvota-web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
