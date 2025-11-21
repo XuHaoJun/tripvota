@@ -36,3 +36,5 @@ npm-debug.log*
 # Misc
 .DS_Store
 *.pem
+
+.project-root-full-path
