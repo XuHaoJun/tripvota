@@ -1,0 +1,10 @@
+---
+description: Monorepo 結構說明
+alwaysApply: true
+---
+
+# Monorepo
+
+- `typescript-workspace`: ConnectRPC frontend
+- `rust-workspace`: Backend services
+- `share/proto`: Protobuf definitions

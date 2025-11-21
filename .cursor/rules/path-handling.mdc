@@ -1,0 +1,12 @@
+---
+description: 路徑處理規則 - 優先使用絕對路徑
+alwaysApply: true
+---
+
+# 路徑處理
+
+- **Always use full absolute paths first** when referencing files or directories
+- **Fallback to relative paths** if full path is not available
+- If project root full path is unknown, read `.project-root-full-path` file
+- Example: `/Users/foo/Desktop/tripvota/typescript-workspace/apps/web/package.json` (full path preferred)
+- Fallback: `typescript-workspace/apps/web/package.json` (relative path)

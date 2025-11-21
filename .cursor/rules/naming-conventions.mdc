@@ -1,0 +1,22 @@
+---
+description: 命名慣例 - 資料庫、TypeScript、Rust
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.rs"
+  - "**/migration/**"
+alwaysApply: false
+---
+
+# Naming Conventions
+
+**Database (PostgreSQL)**: snake_case tables/columns (`trip_cards`, `trip_id`, `created_at`)
+
+**TypeScript**:
+
+- Types: PascalCase from table names (`TripCard` from `trip_cards`)
+- Fields: camelCase from columns (`tripId` from `trip_id`, `createdAt` from `created_at`)
+- Props: PascalCase + `Props` suffix (`TripCardProps`)
+- Draft/scheduled cards use unified `TripCard` type with `status` field
+
+**Rust**: PascalCase entities (`TripCards`), snake_case fields (match DB)

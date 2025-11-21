@@ -1,0 +1,25 @@
+---
+description: 資料庫工作流程 - Schema-First 方法
+globs:
+  - "rust-workspace/packages/migration/**"
+  - "rust-workspace/packages/entity/**"
+alwaysApply: false
+---
+
+# Backend Database Workflow
+
+**Schema-First Approach** (always follow this order):
+
+1. **Add Migration**: Create new migration in `rust-workspace/packages/migration/src/`
+
+   - Name: `mYYYYMMDD_HHMMSS_description.rs`
+   - Implement both `up()` and `down()` methods
+   - Register in `migration/src/lib.rs`
+
+2. **Run Migration**: Execute `cargo run --package migration up` to apply schema changes
+
+3. **Generate Entities**: Run `./scripts/generate-entities.sh` to regenerate entity files from the actual database schema
+   - Inspects PostgreSQL database and generates Rust entity models
+   - Output: `rust-workspace/packages/entity/src/`
+
+**Never** manually edit entity files - always regenerate from database after migrations.

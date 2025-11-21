@@ -1,0 +1,19 @@
+---
+description: Protobuf 工作流程
+globs:
+  - "**/*.proto"
+  - "share/proto/**"
+alwaysApply: false
+---
+
+# Protobuf Workflow
+
+1. Edit `.proto` in `share/proto`
+2. Regenerate TS: `pnpm --filter @workspace/proto-gen generate` (commit generated files)
+3. Rust: Auto-generates on build via `build.rs`
+
+## ConnectRPC
+
+- Keep proto changes backward-compatible
+- Frontend: Import from `packages/proto-gen`
+- Backend: Rebuild after proto updates
