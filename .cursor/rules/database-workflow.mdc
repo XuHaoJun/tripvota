@@ -18,8 +18,16 @@ alwaysApply: false
 
 2. **Run Migration**: Execute `cargo run --package migration up` to apply schema changes
 
+   - **Environment Variables**: CLI tools (like migration) may need environment variables
+   - Read configuration from `rust-workspace/apps/server/appsettings.json`
+   - Convert JSON keys to uppercase with underscores for environment variables:
+     - `database_url` → `DATABASE_URL`
+     - `jwt_secret` → `JWT_SECRET`
+   - Example: `DATABASE_URL=postgresql://postgres:test@localhost:5432/tripvota cargo run --package migration up`
+
 3. **Generate Entities**: Run `./scripts/generate-entities.sh` to regenerate entity files from the actual database schema
    - Inspects PostgreSQL database and generates Rust entity models
    - Output: `rust-workspace/packages/entity/src/`
+   - May also require `DATABASE_URL` environment variable from `appsettings.json`
 
 **Never** manually edit entity files - always regenerate from database after migrations.
