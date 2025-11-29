@@ -1,7 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -17,6 +15,7 @@ import {
   FormMessage,
 } from '@workspace/ui/components/form';
 import { Input } from '@workspace/ui/components/input';
+import { Label } from '@workspace/ui/components/label';
 
 import { useBotCreate } from '@/hooks/bot/use-bot-create';
 import { botCreateSchema, type BotCreateValues } from '@/lib/schemas/bot';
@@ -40,7 +39,14 @@ export function BotCreateForm() {
       displayName: '',
       description: '',
       capabilities: [],
-      apiChannelBridge: undefined,
+      apiChannelBridge: {
+        bridgeType: 'api',
+        thirdProviderType: 'line',
+        thirdId: '',
+        thirdSecret: '',
+        apiEndpoint: '',
+        apiVersion: '',
+      },
       oauthChannelBridge: undefined,
     },
   });
@@ -122,119 +128,96 @@ export function BotCreateForm() {
 
           <div className="space-y-4">
             <div>
-              <FormLabel>Channel Bridges *</FormLabel>
-              <FormDescription className="mb-4">
+              <Label>Channel Bridges *</Label>
+              <p className="text-muted-foreground mb-4 text-[0.8rem]">
                 At least one channel bridge (API or OAuth) is required. Create the bridge configuration below.
-              </FormDescription>
+              </p>
             </div>
 
             {/* API Channel Bridge */}
             <div className="rounded-lg border p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <FormLabel>API Channel Bridge</FormLabel>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    if (form.getValues('apiChannelBridge')) {
-                      form.setValue('apiChannelBridge', undefined);
-                    } else {
-                      form.setValue('apiChannelBridge', {
-                        bridgeType: 'api',
-                        thirdProviderType: 'line',
-                        thirdId: '',
-                        thirdSecret: '',
-                        apiEndpoint: '',
-                        apiVersion: '',
-                      });
-                    }
-                  }}
-                >
-                  {form.watch('apiChannelBridge') ? 'Remove' : 'Add API Bridge'}
-                </Button>
+              <div className="mb-4">
+                <Label>API Channel Bridge</Label>
               </div>
 
-              {form.watch('apiChannelBridge') && (
-                <div className="space-y-3">
-                  <FormField
-                    control={form.control}
-                    name="apiChannelBridge.thirdProviderType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Provider Type *</FormLabel>
-                        <FormControl>
-                          <select
-                            {...field}
-                            className="border-input file:text-foreground placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:ring-1 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                          >
-                            <option value="line">Line</option>
-                          </select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="apiChannelBridge.thirdId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>API Key ID *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Your API Key ID" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="apiChannelBridge.thirdSecret"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>API Secret *</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="Your API Secret" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="apiChannelBridge.apiEndpoint"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>API Endpoint</FormLabel>
-                        <FormControl>
-                          <Input placeholder="https://api.example.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="apiChannelBridge.apiVersion"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>API Version</FormLabel>
-                        <FormControl>
-                          <Input placeholder="v1" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              )}
+              <div className="space-y-3">
+                <FormField
+                  control={form.control}
+                  name="apiChannelBridge.thirdProviderType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Provider Type *</FormLabel>
+                      <FormControl>
+                        <select
+                          {...field}
+                          className="border-input file:text-foreground placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:ring-1 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                        >
+                          <option value="line">Line</option>
+                        </select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="apiChannelBridge.thirdId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>API Key ID *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Your API Key ID" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="apiChannelBridge.thirdSecret"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>API Secret *</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Your API Secret" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="apiChannelBridge.apiEndpoint"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>API Endpoint</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://api.example.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="apiChannelBridge.apiVersion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>API Version</FormLabel>
+                      <FormControl>
+                        <Input placeholder="v1" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             {/* OAuth Channel Bridge */}
             <div className="rounded-lg border p-4">
               <div className="mb-4 flex items-center justify-between">
-                <FormLabel>OAuth Channel Bridge</FormLabel>
+                <Label>OAuth Channel Bridge</Label>
                 <Button
                   type="button"
                   variant="ghost"

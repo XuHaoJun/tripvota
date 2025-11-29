@@ -5,9 +5,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: String, // Subject (User ID)
-    pub exp: usize,  // Expiration
-    pub iat: usize,  // Issued At
+    pub sub: String,              // Subject (User ID)
+    pub exp: usize,               // Expiration
+    pub iat: usize,               // Issued At
+    pub realm_id: Option<String>, // Realm ID
 }
 
 pub fn sign_token(user_id: &str, secret: &str, duration_secs: u64) -> Result<String> {
@@ -16,6 +17,7 @@ pub fn sign_token(user_id: &str, secret: &str, duration_secs: u64) -> Result<Str
         sub: user_id.to_owned(),
         exp: (now + duration_secs) as usize,
         iat: now as usize,
+        realm_id: None,
     };
 
     let token = encode(

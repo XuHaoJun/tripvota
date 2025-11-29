@@ -46,7 +46,7 @@ export default function BotListPage() {
     filters,
     sorters: [
       {
-        field: 'updatedAt',
+        field: 'id',
         order: 'desc',
       },
     ],

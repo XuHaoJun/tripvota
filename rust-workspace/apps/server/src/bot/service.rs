@@ -10,8 +10,11 @@ use workspace_entity::{account_realm_roles, bots, channel_bridge};
 
 use crate::proto::bot::*;
 
-/// Extract account_id from JWT token in request headers
-fn extract_account_id_from_headers(headers: &Headers, jwt_secret: &str) -> Result<Uuid, Error> {
+/// Extract account_id and realm_id from JWT token in request headers
+fn extract_account_and_realm_from_headers(
+    headers: &Headers,
+    jwt_secret: &str,
+) -> Result<(Uuid, Option<Uuid>), Error> {
     // Extract Authorization header
     let auth_header = headers
         .get("authorization")
@@ -24,20 +27,42 @@ fn extract_account_id_from_headers(headers: &Headers, jwt_secret: &str) -> Resul
         .strip_prefix("Bearer ")
         .ok_or(Error::Forbidden)?;
 
-    // Verify token and extract account ID
+    // Verify token and extract account ID and realm_id
     let claims = jwt::verify_token(token, jwt_secret).map_err(|_| Error::Forbidden)?;
 
     let account_id = Uuid::parse_str(&claims.sub).map_err(|_| Error::Forbidden)?;
 
+    let realm_id = claims
+        .realm_id
+        .map(|r| Uuid::parse_str(&r))
+        .transpose()
+        .map_err(|_| Error::Forbidden)?;
+
+    Ok((account_id, realm_id))
+}
+
+/// Extract account_id from JWT token in request headers (for backward compatibility)
+fn extract_account_id_from_headers(headers: &Headers, jwt_secret: &str) -> Result<Uuid, Error> {
+    let (account_id, _) = extract_account_and_realm_from_headers(headers, jwt_secret)?;
     Ok(account_id)
 }
 
-/// Extract realm_id from authenticated user's account_id
-/// For MVP, we get the first realm_id associated with the account
-async fn extract_realm_id_from_account(
+/// Extract realm_id from JWT token in request headers
+/// Falls back to database lookup if not in JWT (for backward compatibility)
+async fn extract_realm_id_from_headers(
+    headers: &Headers,
+    jwt_secret: &str,
     account_id: Uuid,
     db: &sea_orm::DatabaseConnection,
 ) -> Result<Uuid, Error> {
+    // Try to get realm_id from JWT first
+    let (_, realm_id) = extract_account_and_realm_from_headers(headers, jwt_secret)?;
+
+    if let Some(realm_id) = realm_id {
+        return Ok(realm_id);
+    }
+
+    // Fallback to database lookup (for backward compatibility with old tokens)
     let realm_role = account_realm_roles::Entity::find()
         .filter(account_realm_roles::COLUMN.account_id.eq(account_id))
         .one(db)
@@ -138,8 +163,8 @@ pub async fn create_bot(
     // Extract account_id and realm_id from JWT
     let account_id = extract_account_id_from_headers(&headers, &state.jwt_secret)?;
     let realm_id = if request.realm_id.is_empty() {
-        // Extract from authenticated user's context
-        extract_realm_id_from_account(account_id, &state.conn).await?
+        // Extract from JWT token
+        extract_realm_id_from_headers(&headers, &state.jwt_secret, account_id, &state.conn).await?
     } else {
         // Validate that provided realm_id belongs to user
         let provided_realm_id = Uuid::parse_str(&request.realm_id)
@@ -260,7 +285,7 @@ pub async fn update_bot(
 ) -> Result<UpdateBotResponse, Error> {
     // Extract account_id and realm_id from JWT
     let account_id = extract_account_id_from_headers(&headers, &state.jwt_secret)?;
-    let realm_id = extract_realm_id_from_account(account_id, &state.conn).await?;
+    let realm_id = extract_realm_id_from_headers(&headers, &state.jwt_secret, account_id, &state.conn).await?;
 
     // Parse bot ID
     let bot_id = Uuid::parse_str(&request.id)
@@ -396,7 +421,7 @@ pub async fn delete_bot(
 ) -> Result<DeleteBotResponse, Error> {
     // Extract account_id and realm_id from JWT
     let account_id = extract_account_id_from_headers(&headers, &state.jwt_secret)?;
-    let realm_id = extract_realm_id_from_account(account_id, &state.conn).await?;
+    let realm_id = extract_realm_id_from_headers(&headers, &state.jwt_secret, account_id, &state.conn).await?;
 
     // Parse bot ID
     let bot_id = Uuid::parse_str(&request.id)
