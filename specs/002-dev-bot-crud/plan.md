@@ -14,6 +14,7 @@ Implement a frontend bot management interface with GraphQL-powered list and deta
 **Language/Version**: TypeScript 5.9+, React 19.2+, Next.js 16.0+  
 **Primary Dependencies**: 
 - Frontend: `@refinedev/core`, `@refinedev/antd`, `@refinedev/react-router`, `graphql-request`, `graphql-tag`, `antd`, `@graphile/simplify-inflection`, `@xuhaojun/refine-postgraphile`
+- Codegen: `@graphql-codegen/cli`, `@graphql-codegen/typescript`, `@graphql-codegen/typescript-operations`, `@graphql-codegen/import-types-preset`
 - Backend: PostGraphile v5 (already configured at `typescript-workspace/apps/postgraphile`), Rust with ConnectRPC
 - UI: shadcn/ui components, Ant Design (for list page only)
 **Storage**: PostgreSQL (bots table already exists in schema)  
@@ -105,7 +106,9 @@ typescript-workspace/apps/web/
 └── lib/
     └── graphql/
         ├── client.ts                       # GraphQLClient setup with authFetch
-        └── fragments.ts                    # GraphQL fragments for bot
+        ├── fragments.ts                    # GraphQL fragments for bot
+        ├── schema.types.ts                 # Generated: All GraphQL schema types
+        └── types.ts                        # Generated: Query/mutation types
 
 typescript-workspace/apps/postgraphile/
 └── [Already configured - no changes needed]
@@ -117,6 +120,8 @@ rust-workspace/apps/server/
 **Structure Decision**: 
 - Frontend feature module in Next.js app router structure (`app/admin/bot/`)
 - GraphQL client configuration in `lib/graphql/` following existing patterns
+- GraphQL types generated via `graphql-codegen` from PostGraphile schema and query documents
+- Generated types in `lib/graphql/schema.types.ts` (schema types) and `lib/graphql/types.ts` (operation types)
 - Hooks directory for data fetching logic
 - Components directory for reusable UI components
 - PostGraphile backend already configured at `typescript-workspace/apps/postgraphile` - no changes needed
@@ -128,7 +133,7 @@ rust-workspace/apps/server/
 No violations identified. The implementation follows MVP principles:
 - Reuses existing PostGraphile setup
 - Uses established Refine patterns for data fetching
-- Minimal new dependencies (only Refine and graphql-request)
+- Minimal new dependencies (Refine, graphql-request, graphql-codegen for type safety)
 - Leverages existing auth infrastructure (`authFetch`)
 
 ## Phase 0: Outline & Research
@@ -171,6 +176,12 @@ No violations identified. The implementation follows MVP principles:
    - Source: PostGraphile GraphiQL endpoint, schema introspection
    - Learn: Connection-based pagination structure, filter types, orderBy options
 
+7. **GraphQL Code Generation Setup**
+   - Research: Configure `graphql-codegen` to generate TypeScript types from PostGraphile schema
+   - Rationale: Type-safe GraphQL queries and mutations require generated types
+   - Source: Study `learn-projects/refine-postgraphile/examples/data-provider-postgraphile/graphql.config.ts`
+   - Learn: Two-file generation pattern (schema.types.ts for schema, types.ts for operations)
+
 ### Research Output
 
 All research findings will be documented in `research.md` with:
@@ -204,6 +215,7 @@ All research findings will be documented in `research.md` with:
 
 3. **quickstart.md**
    - Setup instructions for Refine + PostGraphile integration
+   - GraphQL codegen configuration and setup
    - GraphQLClient configuration with authFetch
    - Example GraphQL queries for bots list and detail
    - Component structure and routing setup

@@ -13,11 +13,72 @@ This guide covers setting up the bot management frontend with GraphQL-powered li
 ```bash
 cd typescript-workspace/apps/web
 pnpm add @refinedev/core @refinedev/antd @refinedev/react-router graphql-request graphql-tag antd @xuhaojun/refine-postgraphile
+pnpm add -D @graphql-codegen/cli @graphql-codegen/typescript @graphql-codegen/typescript-operations @graphql-codegen/import-types-preset graphql-config
 ```
 
 **Note**: If `@xuhaojun/refine-postgraphile` is not available, we'll use patterns from `learn-projects/refine-postgraphile` to create a custom data provider wrapper.
 
-## Step 2: Configure GraphQL Client with Auth
+## Step 2: Configure GraphQL Code Generation
+
+Create `typescript-workspace/apps/web/graphql.config.ts`:
+
+```typescript
+import type { IGraphQLConfig } from "graphql-config";
+
+const config: IGraphQLConfig = {
+  schema: process.env.NEXT_PUBLIC_GRAPHQL_URL || "http://localhost:5000/graphql",
+  extensions: {
+    codegen: {
+      hooks: {
+        afterOneFileWrite: ["prettier --write"],
+      },
+      generates: {
+        "lib/graphql/schema.types.ts": {
+          plugins: ["typescript"],
+          config: {
+            skipTypename: true,
+            enumsAsTypes: true,
+          },
+        },
+        "lib/graphql/types.ts": {
+          preset: "import-types",
+          documents: ["app/**/*.{ts,tsx}", "hooks/**/*.{ts,tsx}", "components/**/*.{ts,tsx}"],
+          plugins: ["typescript-operations"],
+          config: {
+            skipTypename: true,
+            enumsAsTypes: true,
+            preResolveTypes: false,
+            useTypeImports: true,
+          },
+          presetConfig: {
+            typesPath: "./schema.types",
+          },
+        },
+      },
+    },
+  },
+};
+
+export default config;
+```
+
+Add codegen script to `package.json`:
+
+```json
+{
+  "scripts": {
+    "codegen": "graphql-codegen",
+    "codegen:watch": "graphql-codegen --watch"
+  }
+}
+```
+
+**Note**: The codegen will:
+- Generate `lib/graphql/schema.types.ts` with all PostGraphile schema types (Bot, BotConnection, BotFilter, etc.)
+- Generate `lib/graphql/types.ts` with TypeScript types for your GraphQL queries/mutations
+- Scan for GraphQL documents (queries/mutations) in your app, hooks, and components directories
+
+## Step 3: Configure GraphQL Client with Auth
 
 Create `typescript-workspace/apps/web/lib/graphql/client.ts`:
 
@@ -123,13 +184,15 @@ export function createAuthenticatedGraphQLClient(authFetch: typeof fetch) {
 }
 ```
 
-## Step 3: Create GraphQL Queries
+## Step 4: Create GraphQL Queries
 
 Create `typescript-workspace/apps/web/hooks/bot/use-bot-queries.ts`:
 
 ```typescript
 import gql from 'graphql-tag';
 import type { DocumentNode } from 'graphql';
+// Types will be generated after running: pnpm codegen
+import type { GetBotsQuery, GetBotsQueryVariables, GetBotQuery, GetBotQueryVariables } from '@/lib/graphql/types';
 
 export const BOTS_QUERY: DocumentNode = gql`
   query GetBots(
@@ -200,7 +263,9 @@ export const BOT_QUERY: DocumentNode = gql`
 `;
 ```
 
-## Step 4: Setup Refine Data Provider
+**Note**: After creating these queries, run `pnpm codegen` to generate TypeScript types. The generated types (`GetBotsQuery`, `GetBotsQueryVariables`, etc.) will be available in `lib/graphql/types.ts`.
+
+## Step 5: Setup Refine Data Provider
 
 Create `typescript-workspace/apps/web/lib/refine/postgraphile-data-provider.ts`:
 
@@ -262,7 +327,7 @@ function buildOrderBy(sorters?: any): string[] {
 }
 ```
 
-## Step 5: Create Bot List Page
+## Step 6: Create Bot List Page
 
 Create `typescript-workspace/apps/web/app/admin/bot/page.tsx`:
 
@@ -301,7 +366,7 @@ export default function BotListPage() {
 }
 ```
 
-## Step 6: Create Bot Detail Page
+## Step 7: Create Bot Detail Page
 
 Create `typescript-workspace/apps/web/app/admin/bot/[id]/page.tsx`:
 
@@ -354,7 +419,7 @@ export default function BotDetailPage() {
 }
 ```
 
-## Step 7: Configure Refine Provider (if using full Refine setup)
+## Step 8: Configure Refine Provider (if using full Refine setup)
 
 If using Refine's full routing and layout system, wrap your app:
 
@@ -398,9 +463,15 @@ NEXT_PUBLIC_GRAPHQL_URL=http://localhost:5000/graphql
 ## Testing the Setup
 
 1. Start PostGraphile server: `cd typescript-workspace/apps/postgraphile && npm run dev`
-2. Start Next.js app: `cd typescript-workspace/apps/web && pnpm dev`
-3. Navigate to `/admin/bot` to see the list page
-4. Click on a bot to see the detail page
+2. Generate GraphQL types: `cd typescript-workspace/apps/web && pnpm codegen`
+3. Start Next.js app: `cd typescript-workspace/apps/web && pnpm dev`
+4. Navigate to `/admin/bot` to see the list page
+5. Click on a bot to see the detail page
+
+**Note**: Run `pnpm codegen` whenever you:
+- Add new GraphQL queries or mutations
+- Update existing queries
+- Change the PostGraphile schema (after restarting PostGraphile server)
 
 ## Next Steps
 
@@ -408,4 +479,5 @@ NEXT_PUBLIC_GRAPHQL_URL=http://localhost:5000/graphql
 - Add search and filtering UI
 - Add pagination controls
 - Style components with shadcn (for detail page) and Ant Design (for list page)
+- Use generated types from `lib/graphql/types.ts` for type-safe GraphQL operations
 

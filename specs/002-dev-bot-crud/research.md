@@ -231,6 +231,42 @@ query GetBot($id: UUID!) {
 - PostGraphile GraphiQL endpoint (when server is running)
 - `learn-projects/refine-postgraphile/examples/data-provider-postgraphile/src/pages/categories/queries.tsx`
 
+## 7. GraphQL Code Generation Setup
+
+### Decision: Use `@graphql-codegen/cli` with TypeScript plugins to generate types from PostGraphile schema and query documents
+**Rationale**: Type-safe GraphQL operations require generated TypeScript types that match the PostGraphile schema. Code generation ensures type safety and prevents runtime errors from schema mismatches.
+
+**Codegen Configuration Pattern**:
+- **Two-file generation approach**:
+  1. `lib/graphql/schema.types.ts` - All GraphQL schema types (Bot, BotConnection, BotFilter, etc.) generated from PostGraphile schema introspection
+  2. `lib/graphql/types.ts` - TypeScript types for specific queries/mutations (GetBotsQuery, GetBotsQueryVariables, etc.) generated from GraphQL documents in codebase
+
+**Configuration**:
+- Use `graphql.config.ts` with `@graphql-codegen/cli`
+- Schema source: PostGraphile GraphQL endpoint (`http://localhost:5000/graphql`)
+- Document scanning: `app/**/*.{ts,tsx}`, `hooks/**/*.{ts,tsx}`, `components/**/*.{ts,tsx}`
+- Plugins:
+  - `@graphql-codegen/typescript` - Generate schema types
+  - `@graphql-codegen/typescript-operations` - Generate operation types
+  - `@graphql-codegen/import-types-preset` - Import types from schema.types.ts
+
+**Workflow**:
+1. Write GraphQL queries using `gql` from `graphql-tag` in `.ts`/`.tsx` files
+2. Run `pnpm codegen` to generate types
+3. Import generated types: `import type { GetBotsQuery, GetBotsQueryVariables } from '@/lib/graphql/types'`
+4. Use types for type-safe GraphQL operations
+
+**Implementation Notes**:
+- Run codegen after creating/updating GraphQL queries
+- Run codegen after PostGraphile schema changes (restart PostGraphile first)
+- Generated files should be committed to git (they're source of truth for types)
+- Use `codegen:watch` during development for automatic regeneration
+
+**Source**:
+- `learn-projects/refine-postgraphile/examples/data-provider-postgraphile/graphql.config.ts`
+- `learn-projects/refine-postgraphile/examples/data-provider-postgraphile/src/graphql/schema.types.ts` (generated)
+- `learn-projects/refine-postgraphile/examples/data-provider-postgraphile/src/graphql/types.ts` (generated)
+
 ## Summary of Key Decisions
 
 1. **GraphQLClient Auth**: Use request middleware to inject Authorization header from authFetch token
@@ -239,4 +275,5 @@ query GetBot($id: UUID!) {
 4. **UI Components**: Ant Design Table for list, shadcn for all other pages
 5. **Testing**: Integration tests for GraphQL, unit tests for complex logic only
 6. **Schema Discovery**: Use PostGraphile GraphiQL/introspection to get exact field names and types
+7. **Type Generation**: Use `graphql-codegen` to generate TypeScript types from PostGraphile schema and query documents (two-file pattern: schema.types.ts and types.ts)
 

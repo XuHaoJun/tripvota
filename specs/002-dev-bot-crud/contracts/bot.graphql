@@ -179,6 +179,31 @@ enum BotOrderBy {
 }
 ```
 
+## Type Generation
+
+These GraphQL queries should be written in TypeScript files using `gql` from `graphql-tag`. After running `pnpm codegen`, TypeScript types will be generated:
+
+- **Schema Types**: `lib/graphql/schema.types.ts` - Contains `Bot`, `BotConnection`, `BotFilter`, `BotOrderBy`, etc.
+- **Operation Types**: `lib/graphql/types.ts` - Contains `GetBotsQuery`, `GetBotsQueryVariables`, `GetBotQuery`, `GetBotQueryVariables`, etc.
+
+Example usage:
+```typescript
+import gql from 'graphql-tag';
+import type { GetBotsQuery, GetBotsQueryVariables } from '@/lib/graphql/types';
+
+export const BOTS_QUERY = gql`
+  query GetBots($first: Int, $after: Cursor, $filter: BotFilter, $orderBy: [BotOrderBy!]) {
+    # ... query content ...
+  }
+`;
+
+// Use generated types for type safety
+const variables: GetBotsQueryVariables = {
+  first: 20,
+  filter: { isActive: { equalTo: true } },
+};
+```
+
 ## Notes
 
 1. **Mutations NOT included**: Create, update, and delete operations are handled via ConnectRPC, not GraphQL mutations.
@@ -190,4 +215,6 @@ enum BotOrderBy {
 4. **Sorting**: Multiple sort orders can be specified via `orderBy` array.
 
 5. **Field Selection**: Queries should select only needed fields to minimize over-fetching.
+
+6. **Type Safety**: Always use generated types from `lib/graphql/types.ts` for type-safe GraphQL operations. Run `pnpm codegen` after creating or updating queries.
 
