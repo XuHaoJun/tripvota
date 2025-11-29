@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { BotService } from '@workspace/proto-gen/src/bot_pb';
 
+import { rowIdToGlobalId } from '@/lib/graphql/utils';
 import type { BotCreateValues } from '@/lib/schemas/bot';
 
 /**
@@ -73,7 +74,7 @@ export function useBotCreate() {
 
         // Redirect to bot list or detail page
         if (response.bot?.id) {
-          router.push(`/admin/bot/${response.bot.id}`);
+          router.push(`/admin/bot/${rowIdToGlobalId('Bot', response.bot.id)}`);
         } else {
           router.push('/admin/bot');
         }

@@ -24,7 +24,7 @@ import type { GetBotQuery } from '@/lib/graphql/types';
 import { botUpdateSchema, type BotUpdateValues } from '@/lib/schemas/bot';
 
 interface BotEditFormProps {
-  botId: string;
+  id: string;
 }
 
 /**
@@ -36,9 +36,9 @@ interface BotEditFormProps {
  * - Validation: at least one channel bridge required, duplicate name check
  * - Concurrent edit detection: warns if bot was modified since load
  */
-export function BotEditForm({ botId }: BotEditFormProps) {
+export function BotEditForm({ id }: BotEditFormProps) {
   const router = useRouter();
-  const { data: bot, isLoading: isLoadingBot } = useBotDetail(botId);
+  const { data: bot, isLoading: isLoadingBot } = useBotDetail(id);
   const { updateBot, isPending } = useBotUpdate();
   const [showConcurrentEditWarning, setShowConcurrentEditWarning] = useState(false);
   const [initialUpdatedAt, setInitialUpdatedAt] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export function BotEditForm({ botId }: BotEditFormProps) {
   const form = useForm<BotUpdateValues>({
     resolver: zodResolver(botUpdateSchema),
     defaultValues: {
-      id: botId,
+      id: id,
       name: '',
       displayName: '',
       description: '',

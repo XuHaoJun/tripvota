@@ -6,7 +6,12 @@ import { BotEditForm } from '@/components/bot/bot-edit-form';
 
 export default function BotEditPage() {
   const params = useParams();
-  const botId = params.id as string;
+  // Decode URL-encoded ID (e.g., %3D becomes =)
+  const id = params.id ? decodeURIComponent(params.id as string) : undefined;
 
-  return <BotEditForm botId={botId} />;
+  if (!id) {
+    return <div>Invalid bot ID</div>;
+  }
+
+  return <BotEditForm id={id} />;
 }

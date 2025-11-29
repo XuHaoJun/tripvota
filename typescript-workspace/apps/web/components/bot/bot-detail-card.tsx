@@ -9,7 +9,7 @@ import { Button } from '@workspace/ui/components/button';
 import { BotDeleteDialog } from '@/components/bot/bot-delete-dialog';
 import type { GetBotQuery } from '@/lib/graphql/types';
 
-type Bot = NonNullable<GetBotQuery['bot']>;
+type Bot = NonNullable<GetBotQuery['botById']>;
 
 interface BotDetailCardProps {
   bot: Bot;
@@ -91,7 +91,7 @@ export function BotDetailCard({ bot }: BotDetailCardProps) {
             </div>
             <div>
               <dt className="text-muted-foreground text-sm font-medium">Bot ID</dt>
-              <dd className="mt-1 font-mono text-xs">{bot.id}</dd>
+              <dd className="mt-1 font-mono text-xs">{bot.rowId}</dd>
             </div>
           </dl>
         </div>
@@ -105,10 +105,6 @@ export function BotDetailCard({ bot }: BotDetailCardProps) {
                 <div>
                   <dt className="text-muted-foreground text-sm font-medium">Realm Name</dt>
                   <dd className="mt-1 text-sm">{bot.realm.name || 'Not set'}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground text-sm font-medium">Realm ID</dt>
-                  <dd className="mt-1 font-mono text-xs">{bot.realm.id}</dd>
                 </div>
               </>
             ) : (
@@ -135,10 +131,6 @@ export function BotDetailCard({ bot }: BotDetailCardProps) {
                     <dt className="text-muted-foreground text-xs font-medium">Provider Type</dt>
                     <dd className="mt-1 text-sm">{bot.apiChannelBridge.thirdProviderType || 'Not set'}</dd>
                   </div>
-                  <div>
-                    <dt className="text-muted-foreground text-xs font-medium">Bridge ID</dt>
-                    <dd className="mt-1 font-mono text-xs">{bot.apiChannelBridge.id}</dd>
-                  </div>
                 </dl>
               </div>
             ) : (
@@ -158,10 +150,6 @@ export function BotDetailCard({ bot }: BotDetailCardProps) {
                   <div>
                     <dt className="text-muted-foreground text-xs font-medium">Provider Type</dt>
                     <dd className="mt-1 text-sm">{bot.oauthChannelBridge.thirdProviderType || 'Not set'}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground text-xs font-medium">Bridge ID</dt>
-                    <dd className="mt-1 font-mono text-xs">{bot.oauthChannelBridge.id}</dd>
                   </div>
                 </dl>
               </div>

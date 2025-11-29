@@ -14,8 +14,9 @@ import { useBotDetail } from '@/hooks/bot/use-bot-detail';
  */
 export default function BotDetailPage() {
   const params = useParams();
-  const botId = params.id as string;
-  const { data: bot, isLoading, error } = useBotDetail(botId);
+  // Decode URL-encoded ID (e.g., %3D becomes =)
+  const id = params.id ? decodeURIComponent(params.id as string) : undefined;
+  const { data: bot, isLoading, error } = useBotDetail(id);
 
   if (isLoading) {
     return (

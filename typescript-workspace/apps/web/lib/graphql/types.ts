@@ -36,14 +36,44 @@ export type GetBotsQuery = {
 };
 
 export type GetBotQueryVariables = Types.Exact<{
-  rowId: Types.Scalars['UUID']['input'];
+  id: Types.Scalars['ID']['input'];
 }>;
 
 export type GetBotQuery = {
+  botById?: Types.Maybe<
+    Pick<
+      Types.Bot,
+      | 'id'
+      | 'rowId'
+      | 'realmId'
+      | 'name'
+      | 'displayName'
+      | 'description'
+      | 'isActive'
+      | 'capabilities'
+      | 'metadata'
+      | 'createdAt'
+      | 'updatedAt'
+      | 'apiChannelBridgeId'
+      | 'oauthChannelBridgeId'
+    > & {
+      realm?: Types.Maybe<Pick<Types.Realm, 'id' | 'name'>>;
+      apiChannelBridge?: Types.Maybe<Pick<Types.ChannelBridge, 'id' | 'bridgeType' | 'thirdProviderType'>>;
+      oauthChannelBridge?: Types.Maybe<Pick<Types.ChannelBridge, 'id' | 'bridgeType' | 'thirdProviderType'>>;
+    }
+  >;
+};
+
+export type GetBotByRowIdQueryVariables = Types.Exact<{
+  rowId: Types.Scalars['UUID']['input'];
+}>;
+
+export type GetBotByRowIdQuery = {
   bot?: Types.Maybe<
     Pick<
       Types.Bot,
       | 'id'
+      | 'rowId'
       | 'realmId'
       | 'name'
       | 'displayName'

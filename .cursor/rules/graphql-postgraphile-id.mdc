@@ -1,0 +1,185 @@
+---
+description: graphql postgraphile id, rowId 使用說明
+globs:
+  - "typescript-workspace/**"
+alwaysApply: true
+---
+
+# PostGraphile ID 使用規範
+
+## 查詢策略：優先使用全域 ID，Fallback 到 rowId
+
+在前端應用中，**優先使用 `id`（全域 ID）進行查詢，如果沒有全域 ID 則 fallback 到 `rowId`（資料庫主鍵）**。
+
+### GraphQL 查詢策略
+
+1. **優先使用 `botById(id: ID!)`** - 使用全域 ID 查詢（推薦）
+2. **Fallback 使用 `bot(rowId: UUID!)`** - 當沒有全域 ID 時使用資料庫主鍵查詢
+
+### 查詢範例
+
+```typescript
+// ✅ 優先：使用 botById 和全域 ID
+export const BOT_QUERY: DocumentNode = gql`
+  query GetBot($id: ID!) {
+    botById(id: $id) {
+      id
+      rowId # 需要包含 rowId 以便在 UI 中顯示
+      name
+      # ...
+    }
+  }
+`;
+
+// ✅ Fallback：當沒有全域 ID 時使用 rowId
+export const BOT_BY_ROW_ID_QUERY: DocumentNode = gql`
+  query GetBotByRowId($rowId: UUID!) {
+    bot(rowId: $rowId) {
+      id
+      rowId
+      name
+      # ...
+    }
+  }
+`;
+```
+
+### 查詢實作模式
+
+```typescript
+// 優先嘗試使用全域 ID，失敗則 fallback 到 rowId
+async function fetchBot(identifier: string) {
+  try {
+    // 嘗試作為全域 ID 查詢
+    const result = await client.request(BOT_QUERY, { id: identifier });
+    if (result.botById) return result.botById;
+  } catch (error) {
+    // 如果失敗，嘗試作為 rowId 查詢
+  }
+
+  // Fallback: 作為 rowId 查詢
+  const result = await client.request(BOT_BY_ROW_ID_QUERY, {
+    rowId: identifier,
+  });
+  return result.bot;
+}
+```
+
+## ConnectRPC API 的 ID 轉換
+
+**一般常見拿到 database primary key（`rowId`）而不能拿到 globalId 的情況，主要是 ConnectRPC 的 API。**
+
+ConnectRPC/Protobuf API 通常只返回 `rowId`（資料庫主鍵），而不返回全域 ID。在這種情況下，需要在前端使用 `rowIdToGlobalId` 進行轉換。
+
+### 使用場景
+
+當 ConnectRPC API 返回的響應中包含 `rowId` 時（例如 `response.bot.id` 實際上是資料庫主鍵），需要轉換為全域 ID 以保持前端的一致性，特別是用於：
+
+- 路由導航（URL 參數）
+- React Query 的查詢鍵
+- 與 GraphQL 查詢的整合
+
+### 範例
+
+```typescript
+import { rowIdToGlobalId } from "@/lib/graphql/utils";
+
+// ConnectRPC API 返回 response.bot.id (這是 rowId，不是 globalId)
+const response = await createBot({
+  /* ... */
+});
+
+if (response.bot?.id) {
+  // ConnectRPC 返回的是資料庫主鍵，需要轉換為全域 ID
+  const globalId = rowIdToGlobalId("Bot", response.bot.id);
+  router.push(`/admin/bot/${globalId}`);
+}
+```
+
+### 為什麼 ConnectRPC 只返回 rowId？
+
+- ConnectRPC 使用 Protobuf 定義，通常直接映射資料庫結構
+- Protobuf 訊息中的 `id` 欄位通常是資料庫主鍵（UUID），而非 GraphQL 的全域 ID
+- GraphQL API（PostGraphile）會自動提供全域 ID，但 ConnectRPC 不會
+
+### 工具函數
+
+使用 `@/lib/graphql/utils` 中的工具函數：
+
+- `rowIdToGlobalId(typeName: string, rowId: any)`: 將 rowId 轉換為全域 ID
+
+  - `typeName`: GraphQL 類型名稱（如 'Bot', 'Realm'）
+  - `rowId`: 資料庫主鍵值
+
+- `globalIdToRowId(globalId: string)`: 將全域 ID 轉換回 rowId（通常不需要在前端使用）
+
+## UI 顯示規範
+
+**在 UI 中顯示給用戶的應該是 `rowId`（資料庫主鍵），而不是全域 ID**。
+
+### 原因
+
+- 全域 ID 是 base64 編碼的字串（如 `WyJCb3QiLCIxMjM0NTY3OC0xMjM0LTEyMzQtMTIzNC0xMjM0NTY3ODkwMTIiXQ==`），對用戶不友好
+- `rowId` 是 UUID 格式（如 `12345678-1234-1234-1234-123456789012`），更易讀
+
+### 範例
+
+```typescript
+// ✅ 正確：在 UI 中顯示 rowId
+<div>
+  <dt>Bot ID</dt>
+  <dd>{bot.rowId}</dd>  {/* 顯示 UUID 格式的 rowId */}
+</div>
+
+// ❌ 錯誤：不要顯示全域 ID
+<div>
+  <dt>Bot ID</dt>
+  <dd>{bot.id}</dd>  {/* 這是 base64 編碼，對用戶不友好 */}
+</div>
+```
+
+## URL 參數處理
+
+**全域 ID 包含 `=` 字符，在 URL 中會被自動編碼為 `%3D`。從 URL 參數讀取時必須解碼。**
+
+### 問題
+
+全域 ID 是 base64 編碼的字串，包含 `=` 填充字符（如 `WyJCb3QiLCIxMjM0NTY3OC0xMjM0LTEyMzQtMTIzNC0xMjM0NTY3ODkwMTIiXQ==`）。當用於 URL 時，`=` 會被編碼為 `%3D`：
+- URL encoded: `WyJCb3QiLCIxMjM0NTY3OC0xMjM0LTEyMzQtMTIzNC0xMjM0NTY3ODkwMTIiXQ%3D%3D`
+- 正確的: `WyJCb3QiLCIxMjM0NTY3OC0xMjM0LTEyMzQtMTIzNC0xMjM0NTY3ODkwMTIiXQ==`
+
+### 解決方案
+
+在從 URL 參數讀取 ID 時，必須使用 `decodeURIComponent` 解碼：
+
+```typescript
+import { useParams } from 'next/navigation';
+
+export default function BotDetailPage() {
+  const params = useParams();
+  // ✅ 正確：解碼 URL-encoded ID (e.g., %3D becomes =)
+  const id = params.id ? decodeURIComponent(params.id as string) : undefined;
+  
+  // ❌ 錯誤：直接使用可能導致查詢失敗
+  // const id = params.id as string;
+  
+  const { data: bot } = useBotDetail(id);
+  // ...
+}
+```
+
+### 注意事項
+
+- Next.js 的 `Link` 組件和 `router.push` 會自動處理 URL 編碼，無需手動編碼
+- 但在讀取 URL 參數時，必須手動解碼
+- 這適用於所有使用全域 ID 作為 URL 參數的情況
+
+### 注意事項
+
+1. **URL 參數**: 路由參數應使用全域 ID（優先）或 rowId（fallback），讀取時必須解碼
+2. **查詢鍵**: React Query 的查詢鍵應使用全域 ID（優先）或 rowId（fallback）
+3. **API 響應**: 當 ConnectRPC API 返回 rowId 時，立即轉換為全域 ID 用於路由和查詢鍵
+4. **UI 顯示**: 始終在 UI 中顯示 `rowId` 而不是全域 ID
+5. **類型安全**: 使用 `GetBotQuery['botById']` 或 `GetBotQuery['bot']` 取決於使用的查詢
+6. **查詢欄位**: 確保查詢中包含 `rowId` 欄位以便在 UI 中顯示
+7. **URL 解碼**: 從 `useParams()` 獲取的 ID 必須使用 `decodeURIComponent` 解碼

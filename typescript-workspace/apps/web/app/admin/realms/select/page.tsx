@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 
 import { useQuery, useMutation } from '@connectrpc/connect-query';
+import { useAtomValue } from 'jotai';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useAtomValue } from 'jotai';
 
 import { AuthService } from '@workspace/proto-gen/src/auth_pb';
 import { Button } from '@workspace/ui/components/button';
@@ -97,10 +97,10 @@ export default function SelectRealmPage() {
             <p className="text-muted-foreground text-sm">Choose which realm you want to access</p>
           </div>
 
-          {error && <div className="text-destructive rounded-md bg-destructive/10 p-4 text-sm">{error}</div>}
+          {error && <div className="text-destructive bg-destructive/10 rounded-md p-4 text-sm">{error}</div>}
 
           {realms.length === 0 ? (
-            <div className="rounded-md bg-muted p-4 text-center text-sm">
+            <div className="bg-muted rounded-md p-4 text-center text-sm">
               No realms available. Please contact your administrator.
             </div>
           ) : (
@@ -108,16 +108,14 @@ export default function SelectRealmPage() {
               {realms.map((realm) => (
                 <div
                   key={realm.id}
-                  className="flex cursor-pointer flex-col rounded-lg border p-4 transition-colors hover:bg-accent"
+                  className="hover:bg-accent flex cursor-pointer flex-col rounded-lg border p-4 transition-colors"
                   onClick={() => handleSelectRealm(realm.id)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="font-semibold">{realm.displayName}</h3>
                       <p className="text-muted-foreground text-sm">{realm.name}</p>
-                      {realm.description && (
-                        <p className="text-muted-foreground mt-2 text-xs">{realm.description}</p>
-                      )}
+                      {realm.description && <p className="text-muted-foreground mt-2 text-xs">{realm.description}</p>}
                     </div>
                     {selectedRealmId === realm.id && isRefreshPending && (
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -142,4 +140,3 @@ export default function SelectRealmPage() {
     </div>
   );
 }
-

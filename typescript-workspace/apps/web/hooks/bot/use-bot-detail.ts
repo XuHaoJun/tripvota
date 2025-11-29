@@ -1,33 +1,70 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { useGraphQLClient } from '@/lib/graphql/client';
-import type { GetBotQuery, GetBotQueryVariables } from '@/lib/graphql/types';
+import type {
+  GetBotByRowIdQuery,
+  GetBotByRowIdQueryVariables,
+  GetBotQuery,
+  GetBotQueryVariables,
+} from '@/lib/graphql/types';
+import { globalIdToRowId } from '@/lib/graphql/utils';
 
-import { BOT_QUERY } from './use-bot-queries';
+import { BOT_BY_ROW_ID_QUERY, BOT_QUERY } from './use-bot-queries';
 
 /**
  * Hook for fetching a single bot by ID using GraphQL
+ * Strategy: Try global ID first, fallback to rowId if not found
  * Includes network error handling and retry logic
  */
-export function useBotDetail(botId: string | undefined) {
+export function useBotDetail(id: string | undefined) {
   const client = useGraphQLClient();
 
-  return useQuery<GetBotQuery['bot'], Error>({
-    queryKey: ['bot', botId],
+  return useQuery<GetBotQuery['botById'] | GetBotByRowIdQuery['bot'], Error>({
+    queryKey: ['bot', id],
     queryFn: async () => {
-      if (!botId) {
+      if (!id) {
         throw new Error('Bot ID is required');
       }
 
+      // Try global ID query first
       try {
         const variables: GetBotQueryVariables = {
-          rowId: botId,
+          id,
         };
 
         const data = await client.request<GetBotQuery>(BOT_QUERY, variables);
-        return data.bot;
+        if (data.botById) {
+          return data.botById;
+        }
       } catch (error) {
-        // Enhance error messages for network errors
+        // If it's a 404 or "not found" error, try fallback to rowId
+        if (error instanceof Error && (error.message.includes('404') || error.message.includes('not found'))) {
+          // Try to extract rowId from global ID, or use id as rowId if it's already a UUID
+          let rowId: string;
+          try {
+            const decoded = globalIdToRowId(id);
+            rowId = Array.isArray(decoded) ? decoded[1] : id;
+          } catch {
+            // If decoding fails, assume id is already a rowId (UUID format)
+            rowId = id;
+          }
+
+          // Fallback: Try querying by rowId
+          try {
+            const variables: GetBotByRowIdQueryVariables = {
+              rowId,
+            };
+            const data = await client.request<GetBotByRowIdQuery>(BOT_BY_ROW_ID_QUERY, variables);
+            if (data.bot) {
+              return data.bot;
+            }
+          } catch (fallbackError) {
+            // If fallback also fails, throw the original error
+            throw error;
+          }
+        }
+
+        // For other errors, enhance error messages
         if (error instanceof Error) {
           if (error.message.includes('fetch') || error.message.includes('network')) {
             throw new Error('Network error: Please check your connection and try again');
@@ -35,14 +72,13 @@ export function useBotDetail(botId: string | undefined) {
           if (error.message.includes('401') || error.message.includes('403')) {
             throw new Error('Access denied: You may not have permission to view this bot');
           }
-          if (error.message.includes('404')) {
-            throw new Error('Bot not found');
-          }
         }
         throw error;
       }
+
+      throw new Error('Bot not found');
     },
-    enabled: !!botId,
+    enabled: !!id,
     retry: (failureCount, error) => {
       // Don't retry on 4xx errors (client errors)
       if (

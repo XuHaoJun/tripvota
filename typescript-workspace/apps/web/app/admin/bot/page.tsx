@@ -122,7 +122,7 @@ export default function BotListPage() {
                     return `${text.slice(0, maxLength)}...`;
                   };
                   return (
-                    <Link href={`/admin/bot/${record.id}`} className="hover:underline">
+                    <Link href={`/admin/bot/${record.id}中文`} className="hover:underline">
                       <div>
                         <div className="font-medium" title={value}>
                           {truncate(value, 30)}
