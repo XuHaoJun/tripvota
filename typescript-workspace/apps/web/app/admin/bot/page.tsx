@@ -5,12 +5,21 @@ import { useState } from 'react';
 import { List } from '@refinedev/antd';
 import type { CrudFilter } from '@refinedev/core';
 import { Table } from 'antd';
+import Link from 'next/link';
 
+import { Button } from '@workspace/ui/components/button';
+
+import { BotDeleteDialog } from '@/components/bot/bot-delete-dialog';
 import { useBotList } from '@/hooks/bot/use-bot-list';
 
 export default function BotListPage() {
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<boolean | undefined>(undefined);
+  const [deleteDialogState, setDeleteDialogState] = useState<{ isOpen: boolean; botId: string; botName: string }>({
+    isOpen: false,
+    botId: '',
+    botName: '',
+  });
 
   const filters: CrudFilter[] = [
     ...(searchText
@@ -48,9 +57,15 @@ export default function BotListPage() {
 
   return (
     <div className="container mx-auto p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight">Bots</h1>
+        <Link href="/admin/bot/create">
+          <Button>Create Bot</Button>
+        </Link>
+      </div>
       <List
         headerProps={{
-          title: 'Bots',
+          title: '',
         }}
       >
         <div className="mb-4 flex gap-4">
@@ -101,12 +116,24 @@ export default function BotListPage() {
               <Table.Column
                 dataIndex="displayName"
                 title="Display Name"
-                render={(value, record: any) => (
-                  <div>
-                    <div className="font-medium">{value}</div>
-                    <div className="text-muted-foreground text-sm">{record.name}</div>
-                  </div>
-                )}
+                render={(value, record: any) => {
+                  const truncate = (text: string, maxLength: number) => {
+                    if (text.length <= maxLength) return text;
+                    return `${text.slice(0, maxLength)}...`;
+                  };
+                  return (
+                    <Link href={`/admin/bot/${record.id}`} className="hover:underline">
+                      <div>
+                        <div className="font-medium" title={value}>
+                          {truncate(value, 30)}
+                        </div>
+                        <div className="text-muted-foreground text-sm" title={record.name}>
+                          {truncate(record.name, 30)}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                }}
               />
               <Table.Column
                 dataIndex="isActive"
@@ -128,10 +155,41 @@ export default function BotListPage() {
                 title="Created At"
                 render={(value: string) => new Date(value).toLocaleDateString()}
               />
+              <Table.Column
+                title="Actions"
+                render={(_: any, record: any) => (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() =>
+                      setDeleteDialogState({
+                        isOpen: true,
+                        botId: record.id,
+                        botName: record.displayName || record.name,
+                      })
+                    }
+                  >
+                    Delete
+                  </Button>
+                )}
+              />
             </Table>
           )}
         </div>
       </List>
+
+      <BotDeleteDialog
+        botId={deleteDialogState.botId}
+        botName={deleteDialogState.botName}
+        isOpen={deleteDialogState.isOpen}
+        onClose={() =>
+          setDeleteDialogState({
+            isOpen: false,
+            botId: '',
+            botName: '',
+          })
+        }
+      />
     </div>
   );
 }

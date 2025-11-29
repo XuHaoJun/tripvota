@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package bot;
+
+// BotService handles bot CRUD operations (create, update, delete)
+// Note: List and detail operations use GraphQL via PostGraphile
+service BotService {
+  // Create a new bot
+  rpc CreateBot(CreateBotRequest) returns (CreateBotResponse);
+  
+  // Update an existing bot
+  rpc UpdateBot(UpdateBotRequest) returns (UpdateBotResponse);
+  
+  // Delete a bot
+  rpc DeleteBot(DeleteBotRequest) returns (DeleteBotResponse);
+}
+
+// Channel Bridge message for creating bridges inline with bot creation
+message ChannelBridgeInput {
+  string bridge_type = 1; // Required: 'oauth' or 'api'
+  string third_provider_type = 2; // Required: Provider type (e.g., 'line')
+  string third_id = 3; // Required: Client ID for OAuth, API Key ID for API
+  string third_secret = 4; // Required: Client Secret for OAuth, API Secret for API
+  
+  // OAuth-specific fields (only used when bridge_type = 'oauth')
+  string access_token = 5; // Optional: OAuth access token
+  string refresh_token = 6; // Optional: OAuth refresh token
+  string token_expiry = 7; // Optional: ISO 8601 timestamp for token expiry
+  repeated string oauth_scopes = 8; // Optional: Array of OAuth scopes
+  
+  // API-specific fields (only used when bridge_type = 'api')
+  string api_endpoint = 9; // Optional: Base API endpoint URL
+  string api_version = 10; // Optional: API version
+}
+
+// Create Bot Request
+message CreateBotRequest {
+  string realm_id = 1; // Required: UUID of the realm (backend should extract from authenticated user's context if not provided)
+  string name = 2; // Required: Unique bot identifier within realm
+  string display_name = 3; // Required: Human-readable bot name
+  string description = 4; // Optional: Bot description
+  ChannelBridgeInput api_channel_bridge = 5; // Optional: API channel bridge to create (at least one bridge required)
+  ChannelBridgeInput oauth_channel_bridge = 6; // Optional: OAuth channel bridge to create (at least one bridge required)
+  bool is_active = 7; // Optional: Bot active status (default: true)
+  repeated string capabilities = 8; // Optional: Array of capability strings
+}
+
+// Create Bot Response
+message CreateBotResponse {
+  bool success = 1;
+  string message = 2;
+  Bot bot = 3; // The created bot
+}
+
+// Update Bot Request
+message UpdateBotRequest {
+  string id = 1; // Required: UUID of the bot to update
+  string name = 2; // Optional: Bot name (if provided, updates the name)
+  string display_name = 3; // Optional: Display name (if provided, updates the display name)
+  string description = 4; // Optional: Description (use empty string to clear, omit to keep unchanged)
+  string api_channel_bridge_id = 5; // Optional: UUID of existing API channel bridge to use (select from existing only during edit)
+  string oauth_channel_bridge_id = 6; // Optional: UUID of existing OAuth channel bridge to use (select from existing only during edit)
+  optional bool is_active = 7; // Optional: Active status
+  repeated string capabilities = 8; // Optional: Capabilities array (if provided, replaces existing)
+}
+
+// Update Bot Response
+message UpdateBotResponse {
+  bool success = 1;
+  string message = 2;
+  Bot bot = 3; // The updated bot
+}
+
+// Delete Bot Request
+message DeleteBotRequest {
+  string id = 1; // Required: UUID of the bot to delete
+}
+
+// Delete Bot Response
+message DeleteBotResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Channel Bridge message (for responses)
+message ChannelBridge {
+  string id = 1;
+  string bridge_type = 2; // 'oauth' or 'api'
+  string third_provider_type = 3;
+  string third_id = 4;
+  string third_secret = 5; // Note: May be omitted in responses for security
+  string access_token = 6; // OAuth-specific
+  string refresh_token = 7; // OAuth-specific
+  string token_expiry = 8; // OAuth-specific, ISO 8601 timestamp
+  repeated string oauth_scopes = 9; // OAuth-specific
+  string api_endpoint = 10; // API-specific
+  string api_version = 11; // API-specific
+  string created_at = 12; // ISO 8601 timestamp string
+  string updated_at = 13; // ISO 8601 timestamp string
+}
+
+// Bot message type (shared between responses)
+message Bot {
+  string id = 1;
+  string realm_id = 2;
+  string name = 3;
+  string display_name = 4;
+  string description = 5;
+  string api_channel_bridge_id = 6; // UUID reference
+  string oauth_channel_bridge_id = 7; // UUID reference
+  ChannelBridge api_channel_bridge = 8; // Optional: Full bridge object if requested
+  ChannelBridge oauth_channel_bridge = 9; // Optional: Full bridge object if requested
+  bool is_active = 10;
+  repeated string capabilities = 11;
+  string created_at = 12; // ISO 8601 timestamp string
+  string updated_at = 13; // ISO 8601 timestamp string
+}
+

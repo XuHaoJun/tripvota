@@ -5,6 +5,8 @@
 
 **Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
 
+**Update 2025-01-27**: Protobuf definitions added for bot CRUD operations. Bot creation now supports inline channel bridge creation - users create channel bridge objects as part of bot creation rather than selecting from existing bridges.
+
 ## Summary
 
 Implement a frontend bot management interface with GraphQL-powered list and detail views using Refine framework. The list page will use Ant Design data table combined with shadcn components, while detail and other pages prioritize shadcn. PostGraphile v5 with `@graphile/simplify-inflection` will provide GraphQL API for read operations (list and detail), while create/update/delete operations will use ConnectRPC through Rust backend. Authentication will be handled by passing `authFetch` to GraphQLClient.
