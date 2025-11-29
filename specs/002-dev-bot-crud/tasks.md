@@ -299,57 +299,57 @@ With multiple developers:
 
 ### Backend Setup & Infrastructure
 
-- [ ] T070 [P] Create bot module structure: `rust-workspace/apps/server/src/bot/mod.rs` declaring bot module
-- [ ] T071 [P] Create bot service file: `rust-workspace/apps/server/src/bot/service.rs` with placeholder handlers
-- [ ] T072 [P] Add bot proto module to `rust-workspace/apps/server/src/main.rs`: `pub mod bot { include!(concat!(env!("OUT_DIR"), "/bot.rs")); }`
-- [ ] T073 [P] Register BotService endpoints in `rust-workspace/apps/server/src/main.rs` following AuthService pattern
-- [ ] T074 [P] Verify proto code generation includes bot.proto in `rust-workspace/apps/server/build.rs` (should auto-detect from share/proto)
+- [x] T070 [P] Create bot module structure: `rust-workspace/apps/server/src/bot/mod.rs` declaring bot module
+- [x] T071 [P] Create bot service file: `rust-workspace/apps/server/src/bot/service.rs` with placeholder handlers
+- [x] T072 [P] Add bot proto module to `rust-workspace/apps/server/src/main.rs`: `pub mod bot { include!(concat!(env!("OUT_DIR"), "/bot.rs")); }`
+- [x] T073 [P] Register BotService endpoints in `rust-workspace/apps/server/src/main.rs` following AuthService pattern
+- [x] T074 [P] Verify proto code generation includes bot.proto in `rust-workspace/apps/server/build.rs` (should auto-detect from share/proto)
 
 ### Authentication & Realm Extraction
 
-- [ ] T075 Create utility function in `rust-workspace/apps/server/src/bot/service.rs` to extract realm_id from JWT token in request headers
-- [ ] T076 [P] Create helper function to get authenticated user's account and realm from JWT token
-- [ ] T077 [P] Add permission check: verify user has access to realm before bot operations
+- [x] T075 Create utility function in `rust-workspace/apps/server/src/bot/service.rs` to extract realm_id from JWT token in request headers
+- [x] T076 [P] Create helper function to get authenticated user's account and realm from JWT token
+- [x] T077 [P] Add permission check: verify user has access to realm before bot operations
 
 ### BotService.createBot Implementation
 
-- [ ] T078 [US2] Implement `create_bot` handler in `rust-workspace/apps/server/src/bot/service.rs` accepting `CreateBotRequest`
-- [ ] T079 [US2] Validate request: ensure at least one channel bridge (API or OAuth) is provided
-- [ ] T080 [US2] Extract realm_id from authenticated user's JWT token (if not provided in request)
-- [ ] T081 [US2] Validate bot name uniqueness within realm before creation
-- [ ] T082 [US2] Create channel bridge records (if provided) using SeaORM in database transaction
-- [ ] T083 [US2] Create bot record with channel bridge references in same transaction
-- [ ] T084 [US2] Handle transaction rollback on validation failures
-- [ ] T085 [US2] Return `CreateBotResponse` with created bot and success message
-- [ ] T086 [US2] Add error handling for duplicate bot names, invalid bridge types, database errors
+- [x] T078 [US2] Implement `create_bot` handler in `rust-workspace/apps/server/src/bot/service.rs` accepting `CreateBotRequest`
+- [x] T079 [US2] Validate request: ensure at least one channel bridge (API or OAuth) is provided
+- [x] T080 [US2] Extract realm_id from authenticated user's JWT token (if not provided in request)
+- [x] T081 [US2] Validate bot name uniqueness within realm before creation
+- [x] T082 [US2] Create channel bridge records (if provided) using SeaORM in database transaction
+- [x] T083 [US2] Create bot record with channel bridge references in same transaction
+- [x] T084 [US2] Handle transaction rollback on validation failures
+- [x] T085 [US2] Return `CreateBotResponse` with created bot and success message
+- [x] T086 [US2] Add error handling for duplicate bot names, invalid bridge types, database errors
 
 ### BotService.updateBot Implementation
 
-- [ ] T087 [US4] Implement `update_bot` handler in `rust-workspace/apps/server/src/bot/service.rs` accepting `UpdateBotRequest`
-- [ ] T088 [US4] Validate bot exists and belongs to user's realm
-- [ ] T089 [US4] Update bot fields: name, display_name, description, is_active, capabilities
-- [ ] T090 [US4] Update channel bridge references (validate bridge IDs exist and belong to realm)
-- [ ] T091 [US4] Validate bot name uniqueness within realm (excluding current bot)
-- [ ] T092 [US4] Validate at least one channel bridge remains after update
-- [ ] T093 [US4] Update `updated_at` timestamp on bot record
-- [ ] T094 [US4] Return `UpdateBotResponse` with updated bot and success message
-- [ ] T095 [US4] Add error handling for bot not found, permission denied, validation failures
+- [x] T087 [US4] Implement `update_bot` handler in `rust-workspace/apps/server/src/bot/service.rs` accepting `UpdateBotRequest`
+- [x] T088 [US4] Validate bot exists and belongs to user's realm
+- [x] T089 [US4] Update bot fields: name, display_name, description, is_active, capabilities
+- [x] T090 [US4] Update channel bridge references (validate bridge IDs exist and belong to realm)
+- [x] T091 [US4] Validate bot name uniqueness within realm (excluding current bot)
+- [x] T092 [US4] Validate at least one channel bridge remains after update
+- [x] T093 [US4] Update `updated_at` timestamp on bot record
+- [x] T094 [US4] Return `UpdateBotResponse` with updated bot and success message
+- [x] T095 [US4] Add error handling for bot not found, permission denied, validation failures
 
 ### BotService.deleteBot Implementation
 
-- [ ] T096 [US5] Implement `delete_bot` handler in `rust-workspace/apps/server/src/bot/service.rs` accepting `DeleteBotRequest`
-- [ ] T097 [US5] Validate bot exists and belongs to user's realm
-- [ ] T098 [US5] Check if bot is in use (e.g., referenced by profiles, trips, chats, etc.)
-- [ ] T099 [US5] Delete bot record (CASCADE will handle related records per schema)
-- [ ] T100 [US5] Return `DeleteBotResponse` with success message
-- [ ] T101 [US5] Add error handling for bot not found, bot in use, permission denied
+- [x] T096 [US5] Implement `delete_bot` handler in `rust-workspace/apps/server/src/bot/service.rs` accepting `DeleteBotRequest`
+- [x] T097 [US5] Validate bot exists and belongs to user's realm
+- [x] T098 [US5] Check if bot is in use (e.g., referenced by profiles, trips, chats, etc.)
+- [x] T099 [US5] Delete bot record (CASCADE will handle related records per schema)
+- [x] T100 [US5] Return `DeleteBotResponse` with success message
+- [x] T101 [US5] Add error handling for bot not found, bot in use, permission denied
 
 ### Error Handling & Validation
 
-- [ ] T102 [P] Add bot-specific error variants to `rust-workspace/apps/server/src/error.rs` if needed (or use existing Error enum)
-- [ ] T103 [P] Implement validation helpers: bot name uniqueness check, channel bridge validation
-- [ ] T104 [P] Add comprehensive error messages for all validation failures
-- [ ] T105 [P] Test error handling paths: invalid input, permission denied, not found, database errors
+- [x] T102 [P] Add bot-specific error variants to `rust-workspace/apps/server/src/error.rs` if needed (or use existing Error enum)
+- [x] T103 [P] Implement validation helpers: bot name uniqueness check, channel bridge validation
+- [x] T104 [P] Add comprehensive error messages for all validation failures
+- [ ] T105 [P] Test error handling paths: invalid input, permission denied, not found, database errors (manual testing required)
 
 ### Integration & Testing
 
