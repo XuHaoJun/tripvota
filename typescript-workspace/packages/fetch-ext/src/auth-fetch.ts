@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 
+import { decodeJwt } from 'jose';
 import { atom, useAtom, useAtomValue, useSetAtom, type Atom } from 'jotai';
 import { useLocalStorage } from 'usehooks-ts';
 
@@ -29,6 +30,7 @@ export interface CreateAuthFetchReturn {
   refreshTokenAtom: Atom<string | null>;
   isLoadingAccessTokenFromLocalStorageAtom: Atom<boolean>;
   accessTokenIsActiveAtom: Atom<boolean>;
+  parsedJwtAtom: Atom<Record<string, unknown> | null>;
 }
 
 const DEFAULT_CONFIG: Required<AuthFetchConfig> = {
@@ -69,6 +71,16 @@ export function createAuthFetch(config: AuthFetchConfig = {}): CreateAuthFetchRe
     const accessToken = get(accessTokenAtom);
     const isRefreshing = get(isRefreshingAtom);
     return Boolean(accessToken) && !isRefreshing;
+  });
+
+  const parsedJwtAtom = atom<Record<string, unknown> | null>((get) => {
+    const token = get(accessTokenAtom);
+    if (!token) return null;
+    try {
+      return decodeJwt(token) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
   });
 
   /**
@@ -257,5 +269,6 @@ export function createAuthFetch(config: AuthFetchConfig = {}): CreateAuthFetchRe
     refreshTokenAtom,
     isLoadingAccessTokenFromLocalStorageAtom,
     accessTokenIsActiveAtom,
+    parsedJwtAtom,
   };
 }

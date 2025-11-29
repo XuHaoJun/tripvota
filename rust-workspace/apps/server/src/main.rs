@@ -68,6 +68,8 @@ async fn main() {
         .rpc(AuthService::refresh_token(refresh_token))
         .rpc(AuthService::logout(logout))
         .rpc(AuthService::me(me))
+        .rpc(AuthService::list_realms(list_realms))
+        .rpc(AuthService::create_realm(create_realm))
         // Bot Service
         .rpc(BotService::create_bot(create_bot))
         .rpc(BotService::update_bot(update_bot))

@@ -11,13 +11,13 @@ pub struct Claims {
     pub realm_id: Option<String>, // Realm ID
 }
 
-pub fn sign_token(user_id: &str, secret: &str, duration_secs: u64) -> Result<String> {
+pub fn sign_token(user_id: &str, secret: &str, duration_secs: u64, realm_id: Option<&str>) -> Result<String> {
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
     let claims = Claims {
         sub: user_id.to_owned(),
         exp: (now + duration_secs) as usize,
         iat: now as usize,
-        realm_id: None,
+        realm_id: realm_id.map(|s| s.to_owned()),
     };
 
     let token = encode(

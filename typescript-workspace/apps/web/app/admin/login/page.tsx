@@ -22,9 +22,13 @@ function LoginFormContent() {
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
   const [error, setError] = useState<string | null>(null);
-  const { setTokens } = useAdminAuthFetch();
+  const { setTokens, getRefreshToken } = useAdminAuthFetch();
 
-  const { mutateAsync: login, isPending } = useMutation(AuthService.method.login);
+  const { mutateAsync: login, isPending: isLoginPending } = useMutation(AuthService.method.login);
+  const { mutateAsync: listRealms, isPending: isListRealmsPending } = useMutation(AuthService.method.listRealms);
+  const { mutateAsync: refreshToken, isPending: isRefreshPending } = useMutation(AuthService.method.refreshToken);
+
+  const isPending = isLoginPending || isListRealmsPending || isRefreshPending;
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -45,9 +49,38 @@ function LoginFormContent() {
       if (response.success && response.account) {
         // Save tokens
         setTokens(response.accessToken, response.refreshToken);
-        // Redirect
         toast.success('Logged in successfully');
-        router.push('/admin/dashboard'); // Assuming dashboard exists
+
+        // Call ListRealms to determine next step
+        try {
+          const realmsData = await listRealms({});
+
+          if (!realmsData.realms || realmsData.realms.length === 0) {
+            // No realms - redirect to create realm page
+            router.push('/admin/realms/create');
+          } else if (realmsData.realms.length === 1) {
+            // Single realm - refresh token with realmId and go to dashboard
+            const refreshResponse = await refreshToken({
+              refreshToken: response.refreshToken,
+              realmId: realmsData.realms[0].id,
+            });
+
+            if (refreshResponse.success) {
+              setTokens(refreshResponse.accessToken, refreshResponse.refreshToken);
+              router.push('/admin/dashboard');
+            } else {
+              setError('Failed to refresh token');
+              toast.error('Failed to refresh token');
+            }
+          } else {
+            // Multiple realms - redirect to selection page
+            router.push('/admin/realms/select');
+          }
+        } catch (e: unknown) {
+          console.error('Failed to list realms:', e);
+          setError('Failed to load realms');
+          toast.error('Failed to load realms');
+        }
       } else {
         setError('Invalid email or password');
         toast.error('Invalid email or password');

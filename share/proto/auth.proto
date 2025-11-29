@@ -18,6 +18,12 @@ service AuthService {
   
   // Get the current authenticated user's profile.
   rpc Me(MeRequest) returns (MeResponse);
+  
+  // List realms accessible to the authenticated user.
+  rpc ListRealms(ListRealmsRequest) returns (ListRealmsResponse);
+  
+  // Create a new realm and assign the creator as admin.
+  rpc CreateRealm(CreateRealmRequest) returns (CreateRealmResponse);
 }
 
 message RegisterRequest {
@@ -45,6 +51,7 @@ message LoginResponse {
 
 message RefreshTokenRequest {
   string refresh_token = 1;
+  string realm_id = 2; // Optional: realm ID to include in JWT token
 }
 
 message RefreshTokenResponse {
@@ -70,5 +77,32 @@ message Account {
   string email = 2;
   string username = 3; // Added username
   string created_at = 4;
+}
+
+message ListRealmsRequest {}
+
+message ListRealmsResponse {
+  repeated Realm realms = 1;
+}
+
+message Realm {
+  string id = 1;
+  string name = 2;
+  string display_name = 3;
+  string description = 4; // Optional
+  bool is_active = 5;
+  string created_at = 6;
+}
+
+message CreateRealmRequest {
+  string name = 1;
+  string display_name = 2;
+  string description = 3; // Optional
+}
+
+message CreateRealmResponse {
+  bool success = 1;
+  string message = 2;
+  Realm realm = 3;
 }
 

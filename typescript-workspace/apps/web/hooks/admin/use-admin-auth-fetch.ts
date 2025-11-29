@@ -11,6 +11,7 @@ const {
   refreshTokenAtom,
   isLoadingAccessTokenFromLocalStorageAtom,
   accessTokenIsActiveAtom,
+  parsedJwtAtom,
 } = createAuthFetch({
   accessTokenKey: ADMIN_ACCESS_TOKEN_KEY,
   refreshTokenKey: ADMIN_REFRESH_TOKEN_KEY,
@@ -30,4 +31,5 @@ export {
   refreshTokenAtom,
   isLoadingAccessTokenFromLocalStorageAtom,
   accessTokenIsActiveAtom,
+  parsedJwtAtom,
 };
