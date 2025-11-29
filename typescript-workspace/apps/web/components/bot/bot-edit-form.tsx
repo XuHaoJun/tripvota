@@ -7,13 +7,21 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '@workspace/ui/components/button';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@workspace/ui/components/form';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@workspace/ui/components/form';
 import { Input } from '@workspace/ui/components/input';
 
-import { useBotUpdate } from '@/hooks/bot/use-bot-update';
 import { useBotDetail } from '@/hooks/bot/use-bot-detail';
-import { botUpdateSchema, type BotUpdateValues } from '@/lib/schemas/bot';
+import { useBotUpdate } from '@/hooks/bot/use-bot-update';
 import type { GetBotQuery } from '@/lib/graphql/types';
+import { botUpdateSchema, type BotUpdateValues } from '@/lib/schemas/bot';
 
 interface BotEditFormProps {
   botId: string;
@@ -21,7 +29,7 @@ interface BotEditFormProps {
 
 /**
  * Bot edit form component
- * 
+ *
  * Allows users to update existing bots with:
  * - Editable: name, display name, description, status, channel bridges (existing only), capabilities
  * - Read-only: metadata
@@ -112,8 +120,8 @@ export function BotEditForm({ botId }: BotEditFormProps) {
   if (!bot) {
     return (
       <div className="container mx-auto max-w-2xl p-6">
-        <div className="rounded-lg border border-destructive p-6">
-          <h2 className="mb-2 text-lg font-semibold text-destructive">Bot Not Found</h2>
+        <div className="border-destructive rounded-lg border p-6">
+          <h2 className="text-destructive mb-2 text-lg font-semibold">Bot Not Found</h2>
           <p className="text-muted-foreground mb-4 text-sm">The bot you're trying to edit doesn't exist.</p>
           <Button variant="outline" onClick={() => router.back()}>
             Go Back
@@ -330,7 +338,7 @@ export function BotEditForm({ botId }: BotEditFormProps) {
             <FormDescription className="mb-2">
               Metadata is managed outside the UI and cannot be edited here.
             </FormDescription>
-            <div className="rounded-md bg-muted p-3">
+            <div className="bg-muted rounded-md p-3">
               <pre className="text-muted-foreground overflow-x-auto text-xs">
                 {bot.metadata ? JSON.stringify(bot.metadata, null, 2) : 'Not set'}
               </pre>
@@ -338,12 +346,7 @@ export function BotEditForm({ botId }: BotEditFormProps) {
           </div>
 
           <div className="flex justify-end gap-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.back()}
-              disabled={isPending}
-            >
+            <Button type="button" variant="outline" onClick={() => router.back()} disabled={isPending}>
               Cancel
             </Button>
             <Button type="submit" disabled={isPending}>
@@ -358,4 +361,3 @@ export function BotEditForm({ botId }: BotEditFormProps) {
     </div>
   );
 }
-

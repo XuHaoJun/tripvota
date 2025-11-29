@@ -1,8 +1,8 @@
 use async_stream::stream;
 use auth::service::*; // Import auth service handlers
-use bot::service::*; // Import bot service handlers
 use axum::Router;
 use axum_connect::{futures::Stream, prelude::*};
+use bot::service::*; // Import bot service handlers
 use error::Error;
 use proto::auth::*; // Import auth proto
 use proto::bot::*; // Import bot proto

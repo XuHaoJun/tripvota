@@ -15,7 +15,7 @@ interface BotDeleteDialogProps {
 
 /**
  * Bot delete confirmation dialog component
- * 
+ *
  * Shows a confirmation dialog before deleting a bot
  * Handles deletion, cancellation, and error states
  */
@@ -46,10 +46,7 @@ export function BotDeleteDialog({ botId, botName, isOpen, onClose }: BotDeleteDi
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div
-        className="bg-background/80 fixed inset-0 backdrop-blur-sm"
-        onClick={handleCancel}
-      />
+      <div className="bg-background/80 fixed inset-0 backdrop-blur-sm" onClick={handleCancel} />
 
       {/* Dialog */}
       <div className="bg-background relative z-50 w-full max-w-md rounded-lg border p-6 shadow-lg">
@@ -59,26 +56,16 @@ export function BotDeleteDialog({ botId, botName, isOpen, onClose }: BotDeleteDi
         </p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-destructive bg-destructive/10 p-3">
+          <div className="border-destructive bg-destructive/10 mb-4 rounded-md border p-3">
             <p className="text-destructive text-sm">{error}</p>
           </div>
         )}
 
         <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleCancel}
-            disabled={isPending}
-          >
+          <Button type="button" variant="outline" onClick={handleCancel} disabled={isPending}>
             Cancel
           </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={isPending}
-          >
+          <Button type="button" variant="destructive" onClick={handleDelete} disabled={isPending}>
             {isPending && (
               <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
             )}
@@ -89,4 +76,3 @@ export function BotDeleteDialog({ botId, botName, isOpen, onClose }: BotDeleteDi
     </div>
   );
 }
-

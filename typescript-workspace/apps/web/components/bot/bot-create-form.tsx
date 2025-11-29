@@ -7,7 +7,15 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '@workspace/ui/components/button';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@workspace/ui/components/form';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@workspace/ui/components/form';
 import { Input } from '@workspace/ui/components/input';
 
 import { useBotCreate } from '@/hooks/bot/use-bot-create';
@@ -15,7 +23,7 @@ import { botCreateSchema, type BotCreateValues } from '@/lib/schemas/bot';
 
 /**
  * Bot create form component
- * 
+ *
  * Allows users to create new bots with:
  * - Required: name, display name, at least one channel bridge (API or OAuth)
  * - Optional: description, capabilities
@@ -52,7 +60,6 @@ export function BotCreateForm() {
       }
     }
   }
-
 
   return (
     <div className="container mx-auto max-w-2xl p-6">
@@ -351,12 +358,7 @@ export function BotCreateForm() {
           />
 
           <div className="flex justify-end gap-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.back()}
-              disabled={isPending}
-            >
+            <Button type="button" variant="outline" onClick={() => router.back()} disabled={isPending}>
               Cancel
             </Button>
             <Button type="submit" disabled={isPending}>
@@ -371,4 +373,3 @@ export function BotCreateForm() {
     </div>
   );
 }
-

@@ -22,11 +22,11 @@ export function useBotDelete() {
 
       if (response.success) {
         toast.success(response.message || 'Bot deleted successfully');
-        
+
         // Invalidate bot queries to refresh data
         queryClient.invalidateQueries({ queryKey: ['bot', botId] });
         queryClient.invalidateQueries({ queryKey: ['bots'] });
-        
+
         // Redirect to bot list
         router.push('/admin/bot');
       } else {
@@ -45,4 +45,3 @@ export function useBotDelete() {
     isPending,
   };
 }
-

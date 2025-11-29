@@ -589,7 +589,6 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-
         manager
             .create_index(
                 Index::create()

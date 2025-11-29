@@ -49,10 +49,7 @@ export function BotDetailCard({ bot }: BotDetailCardProps) {
           <Link href={`/admin/bot/edit/${bot.id}`}>
             <Button variant="outline">Edit</Button>
           </Link>
-          <Button
-            variant="destructive"
-            onClick={() => setShowDeleteDialog(true)}
-          >
+          <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
             Delete
           </Button>
           <Link href="/admin/bot">
@@ -185,7 +182,7 @@ export function BotDetailCard({ bot }: BotDetailCardProps) {
         {/* Metadata */}
         <div className="rounded-lg border p-6">
           <h2 className="mb-4 text-lg font-semibold">Metadata</h2>
-          <div className="rounded-md bg-muted p-4">
+          <div className="bg-muted rounded-md p-4">
             <pre className="text-muted-foreground overflow-x-auto text-xs">{formatMetadata(bot.metadata)}</pre>
           </div>
         </div>
@@ -215,4 +212,3 @@ export function BotDetailCard({ bot }: BotDetailCardProps) {
     </div>
   );
 }
-

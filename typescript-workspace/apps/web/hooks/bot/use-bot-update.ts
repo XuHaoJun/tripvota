@@ -31,11 +31,11 @@ export function useBotUpdate() {
 
       if (response.success) {
         toast.success('Bot updated successfully!');
-        
+
         // Invalidate bot queries to refresh data
         queryClient.invalidateQueries({ queryKey: ['bot', values.id] });
         queryClient.invalidateQueries({ queryKey: ['bots'] });
-        
+
         // Redirect to bot detail page
         router.push(`/admin/bot/${values.id}`);
       } else {
@@ -54,4 +54,3 @@ export function useBotUpdate() {
     isPending,
   };
 }
-

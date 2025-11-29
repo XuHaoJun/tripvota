@@ -1,20 +1,11 @@
-import gql from 'graphql-tag';
 import type { DocumentNode } from 'graphql';
+import gql from 'graphql-tag';
+
 import type { GetBotsQuery, GetBotsQueryVariables, GetBotQuery, GetBotQueryVariables } from '@/lib/graphql/types';
 
 export const BOTS_QUERY: DocumentNode = gql`
-  query GetBots(
-    $first: Int
-    $after: Cursor
-    $filter: BotFilter
-    $orderBy: [BotOrderBy!]
-  ) {
-    bots(
-      first: $first
-      after: $after
-      filter: $filter
-      orderBy: $orderBy
-    ) {
+  query GetBots($first: Int, $after: Cursor, $filter: BotFilter, $orderBy: [BotOrderBy!]) {
+    bots(first: $first, after: $after, filter: $filter, orderBy: $orderBy) {
       edges {
         node {
           id
@@ -73,4 +64,3 @@ export const BOT_QUERY: DocumentNode = gql`
     }
   }
 `;
-

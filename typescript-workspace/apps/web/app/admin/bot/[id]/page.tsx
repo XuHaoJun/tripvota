@@ -1,8 +1,7 @@
 'use client';
 
-import { useParams } from 'next/navigation';
-
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
 import { Button } from '@workspace/ui/components/button';
 
@@ -27,10 +26,10 @@ export default function BotDetailPage() {
           </div>
           {/* Show previous content skeleton while loading */}
           <div className="rounded-lg border p-6">
-            <div className="mb-4 h-8 w-48 animate-pulse rounded bg-muted" />
+            <div className="bg-muted mb-4 h-8 w-48 animate-pulse rounded" />
             <div className="space-y-2">
-              <div className="h-4 w-full animate-pulse rounded bg-muted" />
-              <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+              <div className="bg-muted h-4 w-full animate-pulse rounded" />
+              <div className="bg-muted h-4 w-3/4 animate-pulse rounded" />
             </div>
           </div>
         </div>
@@ -41,8 +40,8 @@ export default function BotDetailPage() {
   if (error) {
     return (
       <div className="container mx-auto max-w-4xl p-6">
-        <div className="rounded-lg border border-destructive p-6">
-          <h2 className="mb-2 text-lg font-semibold text-destructive">Error Loading Bot</h2>
+        <div className="border-destructive rounded-lg border p-6">
+          <h2 className="text-destructive mb-2 text-lg font-semibold">Error Loading Bot</h2>
           <p className="text-muted-foreground mb-4 text-sm">
             {error instanceof Error ? error.message : 'An unexpected error occurred'}
           </p>
@@ -69,7 +68,9 @@ export default function BotDetailPage() {
       <div className="container mx-auto max-w-4xl p-6">
         <div className="rounded-lg border p-6">
           <h2 className="mb-2 text-lg font-semibold">Bot Not Found</h2>
-          <p className="text-muted-foreground mb-4 text-sm">The bot you're looking for doesn't exist or has been deleted.</p>
+          <p className="text-muted-foreground mb-4 text-sm">
+            The bot you're looking for doesn't exist or has been deleted.
+          </p>
           <Link href="/admin/bot">
             <Button variant="outline">Back to List</Button>
           </Link>
@@ -80,4 +81,3 @@ export default function BotDetailPage() {
 
   return <BotDetailCard bot={bot} />;
 }
-

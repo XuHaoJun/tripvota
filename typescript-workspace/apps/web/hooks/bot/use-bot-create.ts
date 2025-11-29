@@ -67,10 +67,10 @@ export function useBotCreate() {
 
       if (response.success) {
         toast.success('Bot created successfully!');
-        
+
         // Invalidate bot list query to refresh the list
         queryClient.invalidateQueries({ queryKey: ['bots'] });
-        
+
         // Redirect to bot list or detail page
         if (response.bot?.id) {
           router.push(`/admin/bot/${response.bot.id}`);
@@ -93,4 +93,3 @@ export function useBotCreate() {
     isPending,
   };
 }
-

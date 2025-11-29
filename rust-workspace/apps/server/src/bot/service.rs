@@ -1,22 +1,17 @@
+use crate::AppState;
 use crate::auth::jwt;
 use crate::auth::service::Headers;
-use crate::AppState;
 use crate::error::Error;
 use axum::extract::State;
 use chrono::Utc;
-use sea_orm::{
-    ActiveModelTrait, EntityTrait, QueryFilter, Set, TransactionTrait,
-};
+use sea_orm::{ActiveModelTrait, EntityTrait, QueryFilter, Set, TransactionTrait};
 use uuid::Uuid;
 use workspace_entity::{account_realm_roles, bots, channel_bridge};
 
 use crate::proto::bot::*;
 
 /// Extract account_id from JWT token in request headers
-fn extract_account_id_from_headers(
-    headers: &Headers,
-    jwt_secret: &str,
-) -> Result<Uuid, Error> {
+fn extract_account_id_from_headers(headers: &Headers, jwt_secret: &str) -> Result<Uuid, Error> {
     // Extract Authorization header
     let auth_header = headers
         .get("authorization")
@@ -109,29 +104,6 @@ fn channel_bridge_input_to_active_model(
     Ok(active_model)
 }
 
-/// Convert channel_bridge::Model to protobuf ChannelBridge
-fn channel_bridge_to_proto(bridge: &channel_bridge::Model) -> ChannelBridge {
-    ChannelBridge {
-        id: bridge.id.to_string(),
-        bridge_type: bridge.bridge_type.clone(),
-        third_provider_type: bridge.third_provider_type.clone(),
-        third_id: bridge.third_id.clone(),
-        third_secret: "".to_string(), // Don't expose secret in response
-        access_token: bridge.access_token.clone().unwrap_or_default(),
-        refresh_token: bridge.refresh_token.clone().unwrap_or_default(),
-        token_expiry: bridge
-            .token_expiry
-            .as_ref()
-            .map(|dt| dt.to_rfc3339())
-            .unwrap_or_default(),
-        oauth_scopes: bridge.oauth_scopes.clone().unwrap_or_default(),
-        api_endpoint: bridge.api_endpoint.clone().unwrap_or_default(),
-        api_version: bridge.api_version.clone().unwrap_or_default(),
-        created_at: bridge.created_at.to_rfc3339(),
-        updated_at: bridge.updated_at.to_rfc3339(),
-    }
-}
-
 /// Convert bots::Model to protobuf Bot
 fn bot_to_proto(bot: &bots::Model) -> Bot {
     Bot {
@@ -148,7 +120,7 @@ fn bot_to_proto(bot: &bots::Model) -> Bot {
             .oauth_channel_bridge_id
             .map(|id| id.to_string())
             .unwrap_or_default(),
-        api_channel_bridge: None, // Not loaded by default
+        api_channel_bridge: None,   // Not loaded by default
         oauth_channel_bridge: None, // Not loaded by default
         is_active: bot.is_active,
         capabilities: bot.capabilities.clone().unwrap_or_default(),
@@ -172,7 +144,7 @@ pub async fn create_bot(
         // Validate that provided realm_id belongs to user
         let provided_realm_id = Uuid::parse_str(&request.realm_id)
             .map_err(|_| Error::Anyhow(anyhow::anyhow!("Invalid realm_id format")))?;
-        
+
         // Verify user has access to this realm
         let has_access = account_realm_roles::Entity::find()
             .filter(account_realm_roles::COLUMN.account_id.eq(account_id))
@@ -180,11 +152,11 @@ pub async fn create_bot(
             .one(&state.conn)
             .await
             .map_err(|e| Error::Anyhow(anyhow::Error::new(e)))?;
-        
+
         if has_access.is_none() {
             return Err(Error::Forbidden);
         }
-        
+
         provided_realm_id
     };
 
@@ -211,7 +183,11 @@ pub async fn create_bot(
     }
 
     // Start transaction for atomic bot and bridge creation
-    let txn = state.conn.begin().await.map_err(|e| Error::Anyhow(anyhow::Error::new(e)))?;
+    let txn = state
+        .conn
+        .begin()
+        .await
+        .map_err(|e| Error::Anyhow(anyhow::Error::new(e)))?;
 
     // Create channel bridges if provided
     let mut api_bridge_id: Option<Uuid> = None;
@@ -352,7 +328,9 @@ pub async fn update_bot(
             .await
             .map_err(|e| Error::Anyhow(anyhow::Error::new(e)))?;
         if bridge.is_none() {
-            return Err(Error::Anyhow(anyhow::anyhow!("API channel bridge not found")));
+            return Err(Error::Anyhow(anyhow::anyhow!(
+                "API channel bridge not found"
+            )));
         }
     }
 
@@ -362,7 +340,9 @@ pub async fn update_bot(
             .await
             .map_err(|e| Error::Anyhow(anyhow::Error::new(e)))?;
         if bridge.is_none() {
-            return Err(Error::Anyhow(anyhow::anyhow!("OAuth channel bridge not found")));
+            return Err(Error::Anyhow(anyhow::anyhow!(
+                "OAuth channel bridge not found"
+            )));
         }
     }
 
@@ -439,7 +419,8 @@ pub async fn delete_bot(
 
     // Delete bot
     let bot_active: bots::ActiveModel = bot.into();
-    bot_active.delete(&state.conn)
+    bot_active
+        .delete(&state.conn)
         .await
         .map_err(|e| Error::Anyhow(anyhow::Error::new(e)))?;
 
@@ -448,4 +429,3 @@ pub async fn delete_bot(
         message: "Bot deleted successfully".to_string(),
     })
 }
-

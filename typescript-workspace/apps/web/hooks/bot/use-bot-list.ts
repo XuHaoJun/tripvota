@@ -2,6 +2,7 @@ import { useTable } from '@refinedev/antd';
 import type { CrudFilter, CrudSort } from '@refinedev/core';
 
 import type { Bot } from '@/lib/graphql/schema.types';
+
 import { BOTS_QUERY } from './use-bot-queries';
 
 export interface UseBotListOptions {
@@ -35,4 +36,3 @@ export function useBotList(options: UseBotListOptions = {}) {
     },
   });
 }
-

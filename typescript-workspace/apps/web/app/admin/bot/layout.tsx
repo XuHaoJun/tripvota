@@ -38,4 +38,3 @@ export default function BotLayout({ children }: { children: React.ReactNode }) {
     </ConfigProvider>
   );
 }
-

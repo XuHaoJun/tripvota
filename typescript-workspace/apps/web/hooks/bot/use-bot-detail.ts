@@ -45,7 +45,10 @@ export function useBotDetail(botId: string | undefined) {
     enabled: !!botId,
     retry: (failureCount, error) => {
       // Don't retry on 4xx errors (client errors)
-      if (error instanceof Error && (error.message.includes('401') || error.message.includes('403') || error.message.includes('404'))) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('401') || error.message.includes('403') || error.message.includes('404'))
+      ) {
         return false;
       }
       // Retry up to 2 times for network errors
@@ -54,4 +57,3 @@ export function useBotDetail(botId: string | undefined) {
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }
-

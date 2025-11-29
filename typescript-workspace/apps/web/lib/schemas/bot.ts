@@ -37,13 +37,10 @@ export const botCreateSchema = z
     apiChannelBridge: channelBridgeInputSchema.optional(),
     oauthChannelBridge: channelBridgeInputSchema.optional(),
   })
-  .refine(
-    (data) => data.apiChannelBridge || data.oauthChannelBridge,
-    {
-      message: 'At least one channel bridge (API or OAuth) is required.',
-      path: ['apiChannelBridge'], // Show error on first channel bridge field
-    },
-  );
+  .refine((data) => data.apiChannelBridge || data.oauthChannelBridge, {
+    message: 'At least one channel bridge (API or OAuth) is required.',
+    path: ['apiChannelBridge'], // Show error on first channel bridge field
+  });
 
 export type BotCreateValues = z.infer<typeof botCreateSchema>;
 
@@ -63,13 +60,9 @@ export const botUpdateSchema = z
     apiChannelBridgeId: z.string().uuid().optional(),
     oauthChannelBridgeId: z.string().uuid().optional(),
   })
-  .refine(
-    (data) => data.apiChannelBridgeId || data.oauthChannelBridgeId,
-    {
-      message: 'At least one channel bridge (API or OAuth) is required.',
-      path: ['apiChannelBridgeId'],
-    },
-  );
+  .refine((data) => data.apiChannelBridgeId || data.oauthChannelBridgeId, {
+    message: 'At least one channel bridge (API or OAuth) is required.',
+    path: ['apiChannelBridgeId'],
+  });
 
 export type BotUpdateValues = z.infer<typeof botUpdateSchema>;
-

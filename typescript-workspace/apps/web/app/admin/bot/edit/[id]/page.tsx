@@ -10,4 +10,3 @@ export default function BotEditPage() {
 
   return <BotEditForm botId={botId} />;
 }
-
