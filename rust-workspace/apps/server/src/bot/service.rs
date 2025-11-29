@@ -285,7 +285,8 @@ pub async fn update_bot(
 ) -> Result<UpdateBotResponse, Error> {
     // Extract account_id and realm_id from JWT
     let account_id = extract_account_id_from_headers(&headers, &state.jwt_secret)?;
-    let realm_id = extract_realm_id_from_headers(&headers, &state.jwt_secret, account_id, &state.conn).await?;
+    let realm_id =
+        extract_realm_id_from_headers(&headers, &state.jwt_secret, account_id, &state.conn).await?;
 
     // Parse bot ID
     let bot_id = Uuid::parse_str(&request.id)
@@ -421,7 +422,8 @@ pub async fn delete_bot(
 ) -> Result<DeleteBotResponse, Error> {
     // Extract account_id and realm_id from JWT
     let account_id = extract_account_id_from_headers(&headers, &state.jwt_secret)?;
-    let realm_id = extract_realm_id_from_headers(&headers, &state.jwt_secret, account_id, &state.conn).await?;
+    let realm_id =
+        extract_realm_id_from_headers(&headers, &state.jwt_secret, account_id, &state.conn).await?;
 
     // Parse bot ID
     let bot_id = Uuid::parse_str(&request.id)

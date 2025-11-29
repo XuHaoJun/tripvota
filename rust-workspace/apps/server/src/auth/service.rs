@@ -3,9 +3,11 @@ use crate::auth::password;
 use crate::proto::auth::*;
 use anyhow::Result;
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, ExprTrait, QueryFilter, Set, TransactionTrait};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, ExprTrait, QueryFilter, Set, TransactionTrait,
+};
 use uuid::Uuid;
-use workspace_entity::{accounts, account_realm_roles, realms, roles};
+use workspace_entity::{account_realm_roles, accounts, realms, roles};
 
 // This state should be injected in main.rs.
 // For now, we'll assume the handler has access to the connection.
@@ -151,8 +153,9 @@ pub async fn login(
     // Generate tokens
     let access_token = jwt::sign_token(&account.id.to_string(), &state.jwt_secret, 3600, None) // 1 hour
         .map_err(crate::error::Error::Anyhow)?;
-    let refresh_token = jwt::sign_token(&account.id.to_string(), &state.jwt_secret, 86400 * 7, None) // 7 days
-        .map_err(crate::error::Error::Anyhow)?;
+    let refresh_token =
+        jwt::sign_token(&account.id.to_string(), &state.jwt_secret, 86400 * 7, None) // 7 days
+            .map_err(crate::error::Error::Anyhow)?;
 
     // Update last login
     let mut active_account: accounts::ActiveModel = account.clone().into();
@@ -190,22 +193,23 @@ pub async fn refresh_token(
     let realm_id_str = if !request.realm_id.is_empty() {
         let realm_id = Uuid::parse_str(&request.realm_id)
             .map_err(|_| crate::error::Error::Anyhow(anyhow::anyhow!("Invalid realm_id format")))?;
-        
+
         // Validate that user has access to this realm
-        let account_id = Uuid::parse_str(&claims.sub)
-            .map_err(|_| crate::error::Error::Anyhow(anyhow::anyhow!("Invalid account ID in token")))?;
-        
+        let account_id = Uuid::parse_str(&claims.sub).map_err(|_| {
+            crate::error::Error::Anyhow(anyhow::anyhow!("Invalid account ID in token"))
+        })?;
+
         let has_access = account_realm_roles::Entity::find()
             .filter(account_realm_roles::COLUMN.account_id.eq(account_id))
             .filter(account_realm_roles::COLUMN.realm_id.eq(realm_id))
             .one(&state.conn)
             .await
             .map_err(|e| crate::error::Error::Anyhow(anyhow::Error::new(e)))?;
-        
+
         if has_access.is_none() {
             return Err(crate::error::Error::Forbidden);
         }
-        
+
         Some(request.realm_id.as_str())
     } else {
         None
@@ -215,8 +219,9 @@ pub async fn refresh_token(
         .map_err(crate::error::Error::Anyhow)?;
 
     // Optionally rotate refresh token
-    let new_refresh_token = jwt::sign_token(&claims.sub, &state.jwt_secret, 86400 * 7, realm_id_str)
-        .map_err(crate::error::Error::Anyhow)?;
+    let new_refresh_token =
+        jwt::sign_token(&claims.sub, &state.jwt_secret, 86400 * 7, realm_id_str)
+            .map_err(crate::error::Error::Anyhow)?;
 
     Ok(RefreshTokenResponse {
         success: true,
@@ -386,7 +391,9 @@ pub async fn create_realm(
         id: Set(admin_role_id),
         realm_id: Set(realm_id),
         name: Set("admin".to_string()),
-        description: Set(Some("Administrator role with full access to the realm".to_string())),
+        description: Set(Some(
+            "Administrator role with full access to the realm".to_string(),
+        )),
         created_at: Set(Utc::now().into()),
     };
 
