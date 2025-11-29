@@ -10,3 +10,6 @@
 [submodule "learn-projects/refine-postgraphile"]
 	path = learn-projects/refine-postgraphile
 	url = git@github.com:XuHaoJun/refine-postgraphile.git
+[submodule "learn-projects/sea-orm"]
+	path = learn-projects/sea-orm
+	url = git@github.com:SeaQL/sea-orm.git

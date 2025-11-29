@@ -5,6 +5,6 @@ alwaysApply: true
 
 # Monorepo
 
-- `typescript-workspace`: ConnectRPC frontend
-- `rust-workspace`: Backend services
+- `typescript-workspace`: ConnectRPC frontend + postgraphile(graphql backend)
+- `rust-workspace`: Backend services(main)
 - `share/proto`: Protobuf definitions

@@ -1,11 +1,13 @@
-# Tasks: Dev Bot Management Frontend (GraphQL List & Detail)
+# Tasks: Dev Bot Management (Frontend + Backend)
 
 **Input**: Design documents from `/specs/002-dev-bot-crud/`
 **Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, contracts/ ✅
 
-**Tests**: Tests are OPTIONAL per Constitution. Only complex logic (GraphQL query transformations, filter building) will be tested if needed.
+**Tests**: Tests are OPTIONAL per Constitution. Only complex logic (GraphQL query transformations, filter building, backend validation) will be tested if needed.
 
-**Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
+**Organization**: 
+- Frontend tasks (Phases 1-8) are grouped by user story to enable independent implementation and testing
+- Backend tasks (Phase 9) implement ConnectRPC service handlers for bot CRUD operations
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -16,10 +18,15 @@
 ## Path Conventions
 
 - Frontend: `typescript-workspace/apps/web/`
-- Pages: `app/admin/bot/`
-- Hooks: `hooks/bot/`
-- Components: `components/bot/`
-- GraphQL: `lib/graphql/`
+  - Pages: `app/admin/bot/`
+  - Hooks: `hooks/bot/`
+  - Components: `components/bot/`
+  - GraphQL: `lib/graphql/`
+- Backend: `rust-workspace/apps/server/`
+  - Service handlers: `src/bot/service.rs`
+  - Module: `src/bot/mod.rs`
+  - Main: `src/main.rs`
+  - Entities: `workspace_entity::bots`, `workspace_entity::channel_bridge`
 
 ---
 
@@ -191,7 +198,11 @@
 - **User Stories (Phase 3+)**: All depend on Foundational phase completion
   - User stories can then proceed in parallel (if staffed)
   - Or sequentially in priority order (P1 → P2 → P3)
-- **Polish (Final Phase)**: Depends on all desired user stories being complete
+- **Polish (Phase 8)**: Depends on all desired user stories being complete
+- **Backend Implementation (Phase 9)**: 
+  - Depends on frontend implementation (Phases 1-8) for contract validation
+  - Can start in parallel with frontend polish if protobuf definitions are complete
+  - Required for full end-to-end functionality of create/update/delete operations
 
 ### User Story Dependencies
 
@@ -275,6 +286,87 @@ With multiple developers:
 
 ---
 
+---
+
+## Phase 9: Backend Implementation (Rust ConnectRPC)
+
+**Purpose**: Implement Rust backend ConnectRPC service handlers for bot CRUD operations
+
+**Prerequisites**: 
+- ✅ Frontend implementation complete (Phases 1-8)
+- ✅ Protobuf definitions generated (`share/proto/bot.proto`)
+- ✅ SeaORM entities available (`workspace_entity::bots`, `workspace_entity::channel_bridge`)
+
+### Backend Setup & Infrastructure
+
+- [ ] T070 [P] Create bot module structure: `rust-workspace/apps/server/src/bot/mod.rs` declaring bot module
+- [ ] T071 [P] Create bot service file: `rust-workspace/apps/server/src/bot/service.rs` with placeholder handlers
+- [ ] T072 [P] Add bot proto module to `rust-workspace/apps/server/src/main.rs`: `pub mod bot { include!(concat!(env!("OUT_DIR"), "/bot.rs")); }`
+- [ ] T073 [P] Register BotService endpoints in `rust-workspace/apps/server/src/main.rs` following AuthService pattern
+- [ ] T074 [P] Verify proto code generation includes bot.proto in `rust-workspace/apps/server/build.rs` (should auto-detect from share/proto)
+
+### Authentication & Realm Extraction
+
+- [ ] T075 Create utility function in `rust-workspace/apps/server/src/bot/service.rs` to extract realm_id from JWT token in request headers
+- [ ] T076 [P] Create helper function to get authenticated user's account and realm from JWT token
+- [ ] T077 [P] Add permission check: verify user has access to realm before bot operations
+
+### BotService.createBot Implementation
+
+- [ ] T078 [US2] Implement `create_bot` handler in `rust-workspace/apps/server/src/bot/service.rs` accepting `CreateBotRequest`
+- [ ] T079 [US2] Validate request: ensure at least one channel bridge (API or OAuth) is provided
+- [ ] T080 [US2] Extract realm_id from authenticated user's JWT token (if not provided in request)
+- [ ] T081 [US2] Validate bot name uniqueness within realm before creation
+- [ ] T082 [US2] Create channel bridge records (if provided) using SeaORM in database transaction
+- [ ] T083 [US2] Create bot record with channel bridge references in same transaction
+- [ ] T084 [US2] Handle transaction rollback on validation failures
+- [ ] T085 [US2] Return `CreateBotResponse` with created bot and success message
+- [ ] T086 [US2] Add error handling for duplicate bot names, invalid bridge types, database errors
+
+### BotService.updateBot Implementation
+
+- [ ] T087 [US4] Implement `update_bot` handler in `rust-workspace/apps/server/src/bot/service.rs` accepting `UpdateBotRequest`
+- [ ] T088 [US4] Validate bot exists and belongs to user's realm
+- [ ] T089 [US4] Update bot fields: name, display_name, description, is_active, capabilities
+- [ ] T090 [US4] Update channel bridge references (validate bridge IDs exist and belong to realm)
+- [ ] T091 [US4] Validate bot name uniqueness within realm (excluding current bot)
+- [ ] T092 [US4] Validate at least one channel bridge remains after update
+- [ ] T093 [US4] Update `updated_at` timestamp on bot record
+- [ ] T094 [US4] Return `UpdateBotResponse` with updated bot and success message
+- [ ] T095 [US4] Add error handling for bot not found, permission denied, validation failures
+
+### BotService.deleteBot Implementation
+
+- [ ] T096 [US5] Implement `delete_bot` handler in `rust-workspace/apps/server/src/bot/service.rs` accepting `DeleteBotRequest`
+- [ ] T097 [US5] Validate bot exists and belongs to user's realm
+- [ ] T098 [US5] Check if bot is in use (e.g., referenced by profiles, trips, chats, etc.)
+- [ ] T099 [US5] Delete bot record (CASCADE will handle related records per schema)
+- [ ] T100 [US5] Return `DeleteBotResponse` with success message
+- [ ] T101 [US5] Add error handling for bot not found, bot in use, permission denied
+
+### Error Handling & Validation
+
+- [ ] T102 [P] Add bot-specific error variants to `rust-workspace/apps/server/src/error.rs` if needed (or use existing Error enum)
+- [ ] T103 [P] Implement validation helpers: bot name uniqueness check, channel bridge validation
+- [ ] T104 [P] Add comprehensive error messages for all validation failures
+- [ ] T105 [P] Test error handling paths: invalid input, permission denied, not found, database errors
+
+### Integration & Testing
+
+- [ ] T106 [P] Test BotService.createBot with API channel bridge only
+- [ ] T107 [P] Test BotService.createBot with OAuth channel bridge only
+- [ ] T108 [P] Test BotService.createBot with both API and OAuth channel bridges
+- [ ] T109 [P] Test BotService.createBot validation: duplicate name, missing bridges, invalid realm
+- [ ] T110 [P] Test BotService.updateBot: update all fields, partial updates, channel bridge changes
+- [ ] T111 [P] Test BotService.updateBot validation: duplicate name, removing all bridges
+- [ ] T112 [P] Test BotService.deleteBot: successful deletion, bot in use error
+- [ ] T113 [P] Verify frontend hooks work with backend implementation
+- [ ] T114 [P] End-to-end test: create bot from frontend, update, delete
+
+**Checkpoint**: Backend implementation complete. All bot CRUD operations functional via ConnectRPC.
+
+---
+
 ## Notes
 
 - [P] tasks = different files, no dependencies
@@ -285,6 +377,9 @@ With multiple developers:
 - Use generated types from `lib/graphql/types.ts` for type-safe GraphQL operations
 - List page uses Ant Design + shadcn, other pages use shadcn first
 - Create/update/delete use ConnectRPC, not GraphQL mutations
+- Backend: Use SeaORM for database operations, follow AuthService pattern for handlers
+- Backend: Extract realm_id from JWT token claims, validate permissions
+- Backend: Use database transactions for multi-record operations (bot + bridges)
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence

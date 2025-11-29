@@ -5,7 +5,9 @@
 
 **Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
 
-**Update 2025-01-27**: Protobuf definitions added for bot CRUD operations. Bot creation now supports inline channel bridge creation - users create channel bridge objects as part of bot creation rather than selecting from existing bridges.
+**Update 2025-01-27**: 
+- Protobuf definitions added for bot CRUD operations. Bot creation now supports inline channel bridge creation - users create channel bridge objects as part of bot creation rather than selecting from existing bridges.
+- Backend implementation added to plan: Rust ConnectRPC service handlers for BotService.createBot, BotService.updateBot, and BotService.deleteBot.
 
 ## Summary
 
@@ -116,7 +118,12 @@ typescript-workspace/apps/postgraphile/
 └── [Already configured - no changes needed]
 
 rust-workspace/apps/server/
-└── [ConnectRPC endpoints for create/update/delete - out of scope for this plan]
+├── src/
+│   ├── bot/
+│   │   ├── mod.rs                    # Bot module declaration
+│   │   └── service.rs                # BotService handlers (create, update, delete)
+│   └── main.rs                       # Register BotService endpoints
+└── [ConnectRPC endpoints for create/update/delete - IN SCOPE]
 ```
 
 **Structure Decision**: 
@@ -205,15 +212,15 @@ All research findings will be documented in `research.md` with:
    - Field relationships: realm_id, api_channel_bridge_id, oauth_channel_bridge_id
    - Validation rules: at least one channel bridge required
 
-2. **contracts/ (GraphQL Schema)**
-   - Bot list query: Connection-based pagination with filters
-   - Bot detail query: Single bot by ID
-   - Document PostGraphile-generated types:
-     - `Bot` type
-     - `BotConnection` type
-     - `BotFilter` type
-     - `BotOrderBy` type
-   - Note: Mutations NOT included (handled by ConnectRPC)
+2. **contracts/ (GraphQL Schema & Protobuf)**
+   - **GraphQL**: Bot list query, Bot detail query
+     - Document PostGraphile-generated types: `Bot`, `BotConnection`, `BotFilter`, `BotOrderBy`
+     - Note: Mutations NOT included (handled by ConnectRPC)
+   - **Protobuf**: `bot.proto` with BotService definitions
+     - `CreateBotRequest` with `ChannelBridgeInput` objects
+     - `UpdateBotRequest` with channel bridge IDs (select from existing)
+     - `DeleteBotRequest` with bot ID
+     - Response messages with success/error handling
 
 3. **quickstart.md**
    - Setup instructions for Refine + PostGraphile integration
@@ -221,6 +228,7 @@ All research findings will be documented in `research.md` with:
    - GraphQLClient configuration with authFetch
    - Example GraphQL queries for bots list and detail
    - Component structure and routing setup
+   - Backend ConnectRPC service implementation guide
 
 ### Agent Context Update
 
@@ -233,5 +241,79 @@ After Phase 1 design complete:
 
 - [x] `data-model.md` - Bot entity and GraphQL type mappings
 - [x] `contracts/bot.graphql` - GraphQL queries for list and detail
+- [x] `contracts/bot.proto` - Protobuf definitions for BotService
 - [x] `quickstart.md` - Setup and integration guide
 - [x] Agent context updated with Refine/PostGraphile patterns
+
+## Phase 2: Backend Implementation (Rust ConnectRPC)
+
+### Prerequisites
+- ✅ Protobuf definitions complete (`share/proto/bot.proto`)
+- ✅ Frontend hooks ready for backend integration
+- ✅ SeaORM entities available (`workspace_entity::bots`, `workspace_entity::channel_bridge`)
+
+### Backend Implementation Tasks
+
+1. **Bot Service Module Structure**
+   - Create `rust-workspace/apps/server/src/bot/mod.rs` declaring bot module
+   - Create `rust-workspace/apps/server/src/bot/service.rs` with BotService handlers
+   - Register BotService endpoints in `main.rs` following AuthService pattern
+
+2. **Authentication & Authorization**
+   - Extract realm_id from JWT token in request headers
+   - Verify user has permission to create/update/delete bots in realm
+   - Use existing JWT validation utilities from `auth::jwt`
+
+3. **BotService.createBot Implementation**
+   - Validate request: at least one channel bridge required
+   - Extract realm_id from authenticated user's JWT (if not provided in request)
+   - Create channel bridge records (if provided) in transaction
+   - Create bot record with channel bridge references
+   - Validate: bot name unique within realm
+   - Return created bot with channel bridge IDs
+
+4. **BotService.updateBot Implementation**
+   - Validate bot exists and belongs to user's realm
+   - Update bot fields (name, display_name, description, is_active, capabilities)
+   - Update channel bridge references (select from existing bridges only)
+   - Validate: bot name unique within realm (excluding current bot)
+   - Validate: at least one channel bridge remains after update
+   - Return updated bot
+
+5. **BotService.deleteBot Implementation**
+   - Validate bot exists and belongs to user's realm
+   - Check if bot is in use (e.g., referenced by profiles, trips, etc.)
+   - Delete bot record (CASCADE will handle related records per schema)
+   - Return success/error message
+
+6. **Error Handling**
+   - Use existing `Error` enum from `error.rs`
+   - Return appropriate RPC error codes (NotFound, PermissionDenied, InvalidArgument)
+   - Provide user-friendly error messages
+
+7. **Database Transactions**
+   - Use database transactions for create operations (bot + channel bridges)
+   - Ensure atomicity: all-or-nothing for bot and bridge creation
+   - Handle rollback on validation failures
+
+### Backend Implementation Notes
+
+- **Realm ID Extraction**: Backend must extract `realm_id` from JWT token claims. The frontend passes empty string - backend populates from auth context.
+- **Channel Bridge Creation**: When creating a bot with channel bridges, create bridge records first, then create bot with bridge IDs.
+- **Validation**: 
+  - Bot name must be unique within realm
+  - At least one channel bridge required (enforced at database level via CHECK constraint)
+  - Bridge type must be 'api' or 'oauth'
+  - Provider type validation (currently only 'line' supported)
+- **Transaction Safety**: Use SeaORM transactions for multi-record operations
+- **Error Messages**: Return descriptive error messages for validation failures
+
+### Phase 2 Output Checklist
+
+- [ ] `rust-workspace/apps/server/src/bot/mod.rs` - Bot module declaration
+- [ ] `rust-workspace/apps/server/src/bot/service.rs` - BotService handlers
+- [ ] `rust-workspace/apps/server/src/main.rs` - BotService endpoint registration
+- [ ] JWT realm_id extraction utility
+- [ ] Database transaction handling for bot + bridge creation
+- [ ] Validation logic for bot name uniqueness
+- [ ] Error handling for all operations
