@@ -100,7 +100,6 @@ CREATE TABLE realms (
     display_name TEXT NOT NULL,
     description TEXT,
     is_active BOOLEAN NOT NULL DEFAULT true,
-    created_by uuid NOT NULL REFERENCES accounts(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     metadata JSONB
@@ -146,11 +145,17 @@ CREATE INDEX idx_identity_providers_enabled ON identity_providers (realm_id, is_
 CREATE INDEX idx_federated_identities_account ON federated_identities (account_id);
 CREATE INDEX idx_federated_identities_provider ON federated_identities (identity_provider_id);
 CREATE INDEX idx_federated_identities_external_user ON federated_identities (identity_provider_id, external_user_id);
-CREATE INDEX idx_realms_created_by ON realms (created_by);
 CREATE INDEX idx_roles_realm ON roles (realm_id);
 CREATE INDEX idx_account_realm_roles_account ON account_realm_roles (account_id);
 CREATE INDEX idx_account_realm_roles_realm ON account_realm_roles (realm_id);
 CREATE INDEX idx_permissions_realm_role ON permissions (realm_id, role_id);
+
+-- For postgraphile
+-- For the account_id relation
+COMMENT ON CONSTRAINT fk_account_realm_roles_account ON account_realm_roles IS E'@fieldName account';
+
+-- For the granted_by relation  
+COMMENT ON CONSTRAINT fk_account_realm_roles_granted_by ON account_realm_roles IS E'@fieldName granted_by';
 
 -- ============================================================================
 -- Channel Bridge Tables

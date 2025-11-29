@@ -8,20 +8,31 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "codegen": "graphql-codegen",
+    "codegen:watch": "graphql-codegen --watch"
   },
   "dependencies": {
     "@connectrpc/connect-query": "^2.2.0",
     "@hookform/resolvers": "^5.2.2",
+    "@refinedev/antd": "^6.0.3",
+    "@refinedev/core": "^5.0.6",
+    "@refinedev/react-router": "^2.0.3",
     "@tanstack/react-query": "^5.90.10",
     "@workspace/fetch-ext": "workspace:*",
     "@workspace/proto-gen": "workspace:*",
     "@workspace/rpc-client": "workspace:*",
     "@workspace/ui": "workspace:*",
+    "@xuhaojun/refine-postgraphile": "^1.0.4",
+    "antd": "^5.29.1",
     "date-fns": "^4.1.0",
+    "graphql": "^16.12.0",
+    "graphql-request": "^5.2.0",
+    "graphql-tag": "^2.12.6",
+    "graphql-ws": "^5.16.2",
     "jotai": "^2.15.1",
     "lucide-react": "^0.554.0",
-    "next": "^16.0.3",
+    "next": "^16.0.5",
     "next-themes": "^0.4.6",
     "react": "^19.2.0",
     "react-big-calendar": "^1.19.4",
@@ -33,6 +44,10 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^6.1.0",
+    "@graphql-codegen/import-types-preset": "^3.0.1",
+    "@graphql-codegen/typescript": "^5.0.6",
+    "@graphql-codegen/typescript-operations": "^5.0.6",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.6",
@@ -41,6 +56,7 @@
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "eslint": "^9.39.1",
+    "graphql-config": "^5.1.5",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.9.2"
   }

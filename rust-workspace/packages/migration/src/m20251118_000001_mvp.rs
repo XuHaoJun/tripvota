@@ -101,7 +101,6 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(true),
                     )
-                    .col(ColumnDef::new(Realms::CreatedBy).uuid().not_null())
                     .col(
                         ColumnDef::new(Realms::CreatedAt)
                             .timestamp_with_time_zone()
@@ -115,17 +114,6 @@ impl MigrationTrait for Migration {
                             .default(Expr::cust("now()")),
                     )
                     .col(ColumnDef::new(Realms::Metadata).json_binary())
-                    .to_owned(),
-            )
-            .await?;
-
-        // Create foreign key from realms to accounts
-        manager
-            .create_foreign_key(
-                ForeignKey::create()
-                    .name("fk_realms_created_by")
-                    .from(Realms::Table, Realms::CreatedBy)
-                    .to(Accounts::Table, Accounts::Id)
                     .to_owned(),
             )
             .await?;
@@ -433,6 +421,19 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        // Add PostGraphile comments for field name customization
+        exec_raw_sql(
+            manager,
+            "COMMENT ON CONSTRAINT fk_account_realm_roles_account ON account_realm_roles IS E'@fieldName account'",
+        )
+        .await?;
+
+        exec_raw_sql(
+            manager,
+            "COMMENT ON CONSTRAINT fk_account_realm_roles_granted_by ON account_realm_roles IS E'@fieldName granted_by'",
+        )
+        .await?;
+
         // Create permissions table
         manager
             .create_table(
@@ -584,16 +585,6 @@ impl MigrationTrait for Migration {
                     .table(FederatedIdentities::Table)
                     .col(FederatedIdentities::IdentityProviderId)
                     .col(FederatedIdentities::ExternalUserId)
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .create_index(
-                Index::create()
-                    .name("idx_realms_created_by")
-                    .table(Realms::Table)
-                    .col(Realms::CreatedBy)
                     .to_owned(),
             )
             .await?;
@@ -1589,7 +1580,6 @@ enum Realms {
     DisplayName,
     Description,
     IsActive,
-    CreatedBy,
     CreatedAt,
     UpdatedAt,
     Metadata,

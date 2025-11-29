@@ -1,0 +1,319 @@
+# Implementation Plan: Dev Bot Management Frontend (List & Detail with GraphQL)
+
+**Branch**: `002-dev-bot-crud` | **Date**: 2025-01-27 | **Spec**: `/specs/002-dev-bot-crud/spec.md`
+**Input**: Create frontend bot directory at `@bot`, use GraphQL for list and detail pages (based on Refine but only list and detail, NOT update/create/delete). Refine uses Ant Design data table. Learn PostGraphile v5 GraphQL with `@graphile/simplify-inflection` design. Pass `authFetch` to GraphQLClient. Only list page uses Ant Design combined with shadcn, other pages use shadcn first. Backend uses PostGraphile (ONLY for list and detail pages, other CRUD operations use ConnectRPC at Rust, which forwards GraphQL endpoint to PostGraphile endpoint).
+
+**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
+
+**Update 2025-01-27**: 
+- Protobuf definitions added for bot CRUD operations. Bot creation now supports inline channel bridge creation - users create channel bridge objects as part of bot creation rather than selecting from existing bridges.
+- Backend implementation added to plan: Rust ConnectRPC service handlers for BotService.createBot, BotService.updateBot, and BotService.deleteBot.
+
+## Summary
+
+Implement a frontend bot management interface with GraphQL-powered list and detail views using Refine framework. The list page will use Ant Design data table combined with shadcn components, while detail and other pages prioritize shadcn. PostGraphile v5 with `@graphile/simplify-inflection` will provide GraphQL API for read operations (list and detail), while create/update/delete operations will use ConnectRPC through Rust backend. Authentication will be handled by passing `authFetch` to GraphQLClient.
+
+## Technical Context
+
+**Language/Version**: TypeScript 5.9+, React 19.2+, Next.js 16.0+  
+**Primary Dependencies**: 
+- Frontend: `@refinedev/core`, `@refinedev/antd`, `@refinedev/react-router`, `graphql-request`, `graphql-tag`, `antd`, `@graphile/simplify-inflection`, `@xuhaojun/refine-postgraphile`
+- Codegen: `@graphql-codegen/cli`, `@graphql-codegen/typescript`, `@graphql-codegen/typescript-operations`, `@graphql-codegen/import-types-preset`
+- Backend: PostGraphile v5 (already configured at `typescript-workspace/apps/postgraphile`), Rust with ConnectRPC
+- UI: shadcn/ui components, Ant Design (for list page only)
+**Storage**: PostgreSQL (bots table already exists in schema)  
+**Testing**: NEEDS CLARIFICATION - Determine testing approach for Refine components and GraphQL integration  
+**Target Platform**: Web browser (Next.js app router)  
+**Project Type**: Web application (monorepo structure - frontend in `typescript-workspace/apps/web`)  
+**Performance Goals**: 
+- Bot list page loads within 2 seconds (per spec SC-001)
+- Support managing 1000+ bots per realm without performance degradation (per spec SC-007)
+**Constraints**: 
+- GraphQLClient must accept custom fetch function (authFetch) - NEEDS CLARIFICATION
+- PostGraphile must use `@graphile/simplify-inflection` for simplified naming
+- Only list and detail pages use GraphQL/Refine; create/update/delete use ConnectRPC
+- List page combines Ant Design with shadcn; other pages use shadcn first
+**Scale/Scope**: 
+- Single feature module: bot management pages
+- 3-4 pages: list, detail, create (ConnectRPC), edit (ConnectRPC)
+- Integration with existing auth system (`@workspace/fetch-ext`)
+
+## Constitution Check
+
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+
+### I. Code Quality ✅
+- Plan uses standard React/Next.js patterns
+- Refine framework provides structured approach to data fetching
+- GraphQL queries will be properly typed and organized
+
+### II. Testing Standards (Complex Logic Only) ⚠️
+- **NEEDS CLARIFICATION**: Determine testing approach for Refine components
+- GraphQL query logic may need integration tests
+- Complex business logic (filtering, pagination) should be tested
+
+### III. User Experience Consistency ✅
+- Using existing shadcn components for consistency
+- Ant Design integration only for list page (as specified)
+- Follows existing admin layout patterns (`/admin/layout.tsx`)
+
+### IV. Performance Requirements (MVP) ✅
+- Performance goals align with spec requirements (2s load time, 1000+ bots support)
+- PostGraphile provides efficient GraphQL queries with connection-based pagination
+- No premature optimization planned
+
+### V. MVP Mindset (No Overdesign) ✅
+- Only implementing list and detail with GraphQL (as specified)
+- Create/update/delete use existing ConnectRPC infrastructure
+- Minimal new dependencies (Refine, graphql-request, antd for list only)
+
+**Gate Status**: ✅ PASS (with clarification needed on testing approach)
+
+## Project Structure
+
+### Documentation (this feature)
+
+```text
+specs/[###-feature]/
+├── plan.md              # This file (/speckit.plan command output)
+├── research.md          # Phase 0 output (/speckit.plan command)
+├── data-model.md        # Phase 1 output (/speckit.plan command)
+├── quickstart.md        # Phase 1 output (/speckit.plan command)
+├── contracts/           # Phase 1 output (/speckit.plan command)
+└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
+```
+
+### Source Code (repository root)
+
+```text
+typescript-workspace/apps/web/
+├── app/
+│   └── admin/
+│       └── bot/
+│           ├── page.tsx                    # List page (Refine + Ant Design + shadcn)
+│           ├── [id]/
+│           │   └── page.tsx                # Detail page (shadcn, GraphQL)
+│           ├── create/
+│           │   └── page.tsx                # Create page (shadcn, ConnectRPC)
+│           └── edit/
+│               └── [id]/
+│                   └── page.tsx            # Edit page (shadcn, ConnectRPC)
+├── components/
+│   └── bot/                                # Bot-specific components (if needed)
+│       ├── bot-list-table.tsx              # Ant Design table wrapper
+│       └── bot-detail-card.tsx             # Detail view component
+├── hooks/
+│   └── bot/
+│       ├── use-bot-list.ts                 # Refine hook for list
+│       ├── use-bot-detail.ts               # GraphQL hook for detail
+│       └── use-bot-queries.ts              # GraphQL queries (gql)
+└── lib/
+    └── graphql/
+        ├── client.ts                       # GraphQLClient setup with authFetch
+        ├── fragments.ts                    # GraphQL fragments for bot
+        ├── schema.types.ts                 # Generated: All GraphQL schema types
+        └── types.ts                        # Generated: Query/mutation types
+
+typescript-workspace/apps/postgraphile/
+└── [Already configured - no changes needed]
+
+rust-workspace/apps/server/
+├── src/
+│   ├── bot/
+│   │   ├── mod.rs                    # Bot module declaration
+│   │   └── service.rs                # BotService handlers (create, update, delete)
+│   └── main.rs                       # Register BotService endpoints
+└── [ConnectRPC endpoints for create/update/delete - IN SCOPE]
+```
+
+**Structure Decision**: 
+- Frontend feature module in Next.js app router structure (`app/admin/bot/`)
+- GraphQL client configuration in `lib/graphql/` following existing patterns
+- GraphQL types generated via `graphql-codegen` from PostGraphile schema and query documents
+- Generated types in `lib/graphql/schema.types.ts` (schema types) and `lib/graphql/types.ts` (operation types)
+- Hooks directory for data fetching logic
+- Components directory for reusable UI components
+- PostGraphile backend already configured at `typescript-workspace/apps/postgraphile` - no changes needed
+
+## Complexity Tracking
+
+> **Fill ONLY if Constitution Check has violations that must be justified**
+
+No violations identified. The implementation follows MVP principles:
+- Reuses existing PostGraphile setup
+- Uses established Refine patterns for data fetching
+- Minimal new dependencies (Refine, graphql-request, graphql-codegen for type safety)
+- Leverages existing auth infrastructure (`authFetch`)
+
+## Phase 0: Outline & Research
+
+### Research Tasks
+
+1. **GraphQLClient Custom Fetch Support**
+   - Research: Does `graphql-request` GraphQLClient support custom fetch function?
+   - Rationale: Need to pass `authFetch` for authentication
+   - Source: Check `graphql-request` documentation and source code
+   - Alternative: If not supported, use request middleware or wrapper
+
+2. **PostGraphile v5 with @graphile/simplify-inflection**
+   - Research: Understand simplified inflection naming conventions
+   - Rationale: Must match PostGraphile schema naming for GraphQL queries
+   - Source: Study `learn-projects/refine-postgraphile/examples/data-provider-postgraphile`
+   - Learn: How `bots` table maps to GraphQL types (likely `Bot`, `BotConnection`, etc.)
+
+3. **Refine Data Provider for PostGraphile (List & Detail Only)**
+   - Research: How to configure Refine data provider to only support `getList` and `getOne`
+   - Rationale: Create/update/delete will use ConnectRPC, not Refine
+   - Source: Study `@xuhaojun/refine-postgraphile` package structure
+   - Learn: Custom data provider implementation or configuration options
+
+4. **Ant Design + shadcn Integration**
+   - Research: Best practices for combining Ant Design Table with shadcn components
+   - Rationale: List page must use both, other pages use shadcn only
+   - Source: Check existing patterns in codebase
+   - Learn: Styling compatibility and component composition
+
+5. **Refine Testing Approach**
+   - Research: Testing strategies for Refine components and GraphQL integration
+   - Rationale: Constitution requires testing for complex logic
+   - Source: Refine documentation, existing test patterns
+   - Decision: Determine if integration tests or unit tests are appropriate
+
+6. **PostGraphile GraphQL Schema for Bots**
+   - Research: Generate or inspect PostGraphile schema for bots table
+   - Rationale: Need exact field names and types for GraphQL queries
+   - Source: PostGraphile GraphiQL endpoint, schema introspection
+   - Learn: Connection-based pagination structure, filter types, orderBy options
+
+7. **GraphQL Code Generation Setup**
+   - Research: Configure `graphql-codegen` to generate TypeScript types from PostGraphile schema
+   - Rationale: Type-safe GraphQL queries and mutations require generated types
+   - Source: Study `learn-projects/refine-postgraphile/examples/data-provider-postgraphile/graphql.config.ts`
+   - Learn: Two-file generation pattern (schema.types.ts for schema, types.ts for operations)
+
+### Research Output
+
+All research findings will be documented in `research.md` with:
+- Decision: [what was chosen]
+- Rationale: [why chosen]
+- Alternatives considered: [what else evaluated]
+- Implementation notes: [how to implement]
+
+## Phase 1: Design & Contracts
+
+### Prerequisites
+- ✅ `research.md` complete with all NEEDS CLARIFICATION resolved
+
+### Design Artifacts
+
+1. **data-model.md**
+   - Extract from existing schema: `docs/sql/mvp.sql` bots table
+   - Document GraphQL type mappings (PostGraphile generated types)
+   - Field relationships: realm_id, api_channel_bridge_id, oauth_channel_bridge_id
+   - Validation rules: at least one channel bridge required
+
+2. **contracts/ (GraphQL Schema & Protobuf)**
+   - **GraphQL**: Bot list query, Bot detail query
+     - Document PostGraphile-generated types: `Bot`, `BotConnection`, `BotFilter`, `BotOrderBy`
+     - Note: Mutations NOT included (handled by ConnectRPC)
+   - **Protobuf**: `bot.proto` with BotService definitions
+     - `CreateBotRequest` with `ChannelBridgeInput` objects
+     - `UpdateBotRequest` with channel bridge IDs (select from existing)
+     - `DeleteBotRequest` with bot ID
+     - Response messages with success/error handling
+
+3. **quickstart.md**
+   - Setup instructions for Refine + PostGraphile integration
+   - GraphQL codegen configuration and setup
+   - GraphQLClient configuration with authFetch
+   - Example GraphQL queries for bots list and detail
+   - Component structure and routing setup
+   - Backend ConnectRPC service implementation guide
+
+### Agent Context Update
+
+After Phase 1 design complete:
+- Run `.specify/scripts/bash/update-agent-context.sh cursor-agent`
+- Add new technologies: Refine, PostGraphile GraphQL integration patterns
+- Preserve manual additions between markers
+
+### Phase 1 Output Checklist
+
+- [x] `data-model.md` - Bot entity and GraphQL type mappings
+- [x] `contracts/bot.graphql` - GraphQL queries for list and detail
+- [x] `contracts/bot.proto` - Protobuf definitions for BotService
+- [x] `quickstart.md` - Setup and integration guide
+- [x] Agent context updated with Refine/PostGraphile patterns
+
+## Phase 2: Backend Implementation (Rust ConnectRPC)
+
+### Prerequisites
+- ✅ Protobuf definitions complete (`share/proto/bot.proto`)
+- ✅ Frontend hooks ready for backend integration
+- ✅ SeaORM entities available (`workspace_entity::bots`, `workspace_entity::channel_bridge`)
+
+### Backend Implementation Tasks
+
+1. **Bot Service Module Structure**
+   - Create `rust-workspace/apps/server/src/bot/mod.rs` declaring bot module
+   - Create `rust-workspace/apps/server/src/bot/service.rs` with BotService handlers
+   - Register BotService endpoints in `main.rs` following AuthService pattern
+
+2. **Authentication & Authorization**
+   - Extract realm_id from JWT token in request headers
+   - Verify user has permission to create/update/delete bots in realm
+   - Use existing JWT validation utilities from `auth::jwt`
+
+3. **BotService.createBot Implementation**
+   - Validate request: at least one channel bridge required
+   - Extract realm_id from authenticated user's JWT (if not provided in request)
+   - Create channel bridge records (if provided) in transaction
+   - Create bot record with channel bridge references
+   - Validate: bot name unique within realm
+   - Return created bot with channel bridge IDs
+
+4. **BotService.updateBot Implementation**
+   - Validate bot exists and belongs to user's realm
+   - Update bot fields (name, display_name, description, is_active, capabilities)
+   - Update channel bridge references (select from existing bridges only)
+   - Validate: bot name unique within realm (excluding current bot)
+   - Validate: at least one channel bridge remains after update
+   - Return updated bot
+
+5. **BotService.deleteBot Implementation**
+   - Validate bot exists and belongs to user's realm
+   - Check if bot is in use (e.g., referenced by profiles, trips, etc.)
+   - Delete bot record (CASCADE will handle related records per schema)
+   - Return success/error message
+
+6. **Error Handling**
+   - Use existing `Error` enum from `error.rs`
+   - Return appropriate RPC error codes (NotFound, PermissionDenied, InvalidArgument)
+   - Provide user-friendly error messages
+
+7. **Database Transactions**
+   - Use database transactions for create operations (bot + channel bridges)
+   - Ensure atomicity: all-or-nothing for bot and bridge creation
+   - Handle rollback on validation failures
+
+### Backend Implementation Notes
+
+- **Realm ID Extraction**: Backend must extract `realm_id` from JWT token claims. The frontend passes empty string - backend populates from auth context.
+- **Channel Bridge Creation**: When creating a bot with channel bridges, create bridge records first, then create bot with bridge IDs.
+- **Validation**: 
+  - Bot name must be unique within realm
+  - At least one channel bridge required (enforced at database level via CHECK constraint)
+  - Bridge type must be 'api' or 'oauth'
+  - Provider type validation (currently only 'line' supported)
+- **Transaction Safety**: Use SeaORM transactions for multi-record operations
+- **Error Messages**: Return descriptive error messages for validation failures
+
+### Phase 2 Output Checklist
+
+- [ ] `rust-workspace/apps/server/src/bot/mod.rs` - Bot module declaration
+- [ ] `rust-workspace/apps/server/src/bot/service.rs` - BotService handlers
+- [ ] `rust-workspace/apps/server/src/main.rs` - BotService endpoint registration
+- [ ] JWT realm_id extraction utility
+- [ ] Database transaction handling for bot + bridge creation
+- [ ] Validation logic for bot name uniqueness
+- [ ] Error handling for all operations

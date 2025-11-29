@@ -103,7 +103,7 @@ echo "Linting changed crates: ${!changed_pkgs[@]}"
 # Format check on entire workspace (fast and ensures consistency)
 cargo fmt --all -- --check
 # Clippy only on changed packages
-cargo clippy --all-targets -- -D warnings $(printf ' -p %q' "${!changed_pkgs[@]}")
+cargo clippy $(printf ' -p %q' "${!changed_pkgs[@]}") --all-targets -- -D warnings
 
 popd >/dev/null
 

@@ -7,6 +7,7 @@
   },
   "scripts": {},
   "dependencies": {
+    "jose": "^5.9.6",
     "jotai": "^2.15.1",
     "usehooks-ts": "^3.1.1"
   },

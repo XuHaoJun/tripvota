@@ -2,8 +2,10 @@ use async_stream::stream;
 use auth::service::*; // Import auth service handlers
 use axum::Router;
 use axum_connect::{futures::Stream, prelude::*};
+use bot::service::*; // Import bot service handlers
 use error::Error;
 use proto::auth::*; // Import auth proto
+use proto::bot::*; // Import bot proto
 use proto::hello::*;
 use sea_orm::{Database, DatabaseConnection};
 use serde::Deserialize;
@@ -11,6 +13,7 @@ use tower_http::cors::CorsLayer;
 
 // Take a peak at error.rs to see how errors work in axum-connect.
 mod auth;
+mod bot;
 mod error; // Register auth module
 
 #[derive(Clone)]
@@ -32,6 +35,9 @@ mod proto {
     }
     pub mod auth {
         include!(concat!(env!("OUT_DIR"), "/auth.rs"));
+    }
+    pub mod bot {
+        include!(concat!(env!("OUT_DIR"), "/bot.rs"));
     }
 }
 
@@ -62,6 +68,12 @@ async fn main() {
         .rpc(AuthService::refresh_token(refresh_token))
         .rpc(AuthService::logout(logout))
         .rpc(AuthService::me(me))
+        .rpc(AuthService::list_realms(list_realms))
+        .rpc(AuthService::create_realm(create_realm))
+        // Bot Service
+        .rpc(BotService::create_bot(create_bot))
+        .rpc(BotService::update_bot(update_bot))
+        .rpc(BotService::delete_bot(delete_bot))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3030").await.unwrap();

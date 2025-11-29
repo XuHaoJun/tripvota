@@ -17,21 +17,12 @@ pub struct Model {
     #[sea_orm(column_type = "Text", nullable)]
     pub description: Option<String>,
     pub is_active: bool,
-    pub created_by: Uuid,
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
     #[sea_orm(column_type = "JsonBinary", nullable)]
     pub metadata: Option<Json>,
     #[sea_orm(has_many)]
     pub account_realm_roles: HasMany<super::account_realm_roles::Entity>,
-    #[sea_orm(
-        belongs_to,
-        from = "created_by",
-        to = "id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
-    pub accounts: HasOne<super::accounts::Entity>,
     #[sea_orm(has_many)]
     pub bots: HasMany<super::bots::Entity>,
     #[sea_orm(has_many)]

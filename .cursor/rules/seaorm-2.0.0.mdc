@@ -1,0 +1,397 @@
+---
+description: SeaORM 2.0.0-rc (bleeding edge) patterns and API differences from v1
+globs:
+  - "**/*.rs"
+  - "rust-workspace/**"
+alwaysApply: true
+---
+
+# SeaORM 2.0.0-rc Patterns and API Guide
+
+This project uses **SeaORM 2.0.0-rc.19** (bleeding edge). This rule documents key differences from v1 and current best practices.
+
+## Entity Format (v2 New)
+
+### Dense Entity Format
+SeaORM 2.0 introduces a new dense entity format using `#[sea_orm::model]`:
+
+```rust
+mod user {
+    use sea_orm::entity::prelude::*;
+
+    #[sea_orm::model]
+    #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+    #[sea_orm(table_name = "user")]
+    pub struct Model {
+        #[sea_orm(primary_key)]
+        pub id: i32,
+        pub name: String,
+        #[sea_orm(unique)]
+        pub email: String,
+        #[sea_orm(has_one)]
+        pub profile: HasOne<super::profile::Entity>,
+        #[sea_orm(has_many)]
+        pub posts: HasMany<super::post::Entity>,
+    }
+}
+```
+
+**Key Points**:
+- Use `#[sea_orm::model]` attribute on Model struct
+- Relations defined inline with `#[sea_orm(has_one)]`, `#[sea_orm(has_many)]`, `#[sea_orm(belongs_to)]`
+- Column attributes: `#[sea_orm(primary_key)]`, `#[sea_orm(unique)]`, `#[sea_orm(unique_key = "name")]`
+- Generated entities use this format by default with `--entity-format dense`
+
+## Strongly-Typed Columns (v2 New)
+
+### Use COLUMN instead of Column enum
+**v1 (old)**:
+```rust
+user::Entity::find().filter(user::Column::Name.contains("Bob"))
+```
+
+**v2 (new)**:
+```rust
+user::Entity::find().filter(user::COLUMN.name.contains("Bob"))
+```
+
+**Benefits**:
+- Compile-time type checking (prevents `user::COLUMN.name.like(2)` - type error!)
+- Better IDE autocomplete
+- More ergonomic API
+
+**Migration**: Replace `Column::FieldName` with `COLUMN.field_name` (camelCase).
+
+## Insert Operations
+
+### Pattern 1: Entity::insert().exec() (Recommended)
+```rust
+let new_bot = bots::ActiveModel {
+    id: Set(Uuid::now_v7()),
+    name: Set("my-bot".to_string()),
+    ..Default::default()
+};
+
+let res = bots::Entity::insert(new_bot).exec(&db).await?;
+let bot_id = res.last_insert_id; // Option<Value> in v2
+```
+
+**Returns**: `InsertResult` with `last_insert_id: Option<PrimaryKeyValue>`
+
+### Pattern 2: active_model.insert() (Also valid)
+```rust
+let new_bot = bots::ActiveModel { /* ... */ };
+let bot = new_bot.insert(&db).await?; // Returns Model directly
+```
+
+**Returns**: `Model` directly (uses `exec_with_returning` internally)
+
+### Pattern 3: active_model.save() (Insert or Update)
+```rust
+let mut bot = bots::ActiveModel { /* ... */ };
+let bot = bot.save(&db).await?; // Returns ActiveModel
+// If primary key set, updates; otherwise inserts
+```
+
+## Update Operations
+
+### Convert Model to ActiveModel
+```rust
+let mut bot: bots::ActiveModel = bots::Entity::find_by_id(bot_id)
+    .one(&db)
+    .await?
+    .ok_or(DbErr::Custom("Bot not found".to_owned()))?
+    .into(); // Model implements Into<ActiveModel>
+
+bot.name = Set("new-name".to_string());
+let updated = bot.update(&db).await?; // Returns Model
+```
+
+### Direct Update
+```rust
+let mut bot: bots::ActiveModel = existing_bot.into();
+bot.name = Set("new-name".to_string());
+let updated = bot.update(&db).await?;
+```
+
+## Delete Operations
+
+```rust
+// Delete by Model
+let bot = bots::Entity::find_by_id(bot_id).one(&db).await?;
+let result = bot.unwrap().delete(&db).await?; // Returns DeleteResult
+
+// Delete by ActiveModel
+let mut bot: bots::ActiveModel = existing_bot.into();
+let result = bot.delete(&db).await?;
+
+// Delete many
+let result = bots::Entity::delete_many()
+    .filter(bots::COLUMN.realm_id.eq(realm_id))
+    .exec(&db)
+    .await?;
+```
+
+## Transactions
+
+### Pattern 1: Closure-based (Recommended)
+```rust
+db.transaction::<_, _, DbErr>(|txn| {
+    Box::pin(async move {
+        // All operations use &txn instead of &db
+        let bridge = channel_bridge::Entity::insert(bridge).exec(txn).await?;
+        let bot = bots::Entity::insert(bot).exec(txn).await?;
+        Ok(bot.last_insert_id)
+    })
+})
+.await?;
+```
+
+**Benefits**: Automatic commit/rollback, cleaner error handling
+
+### Pattern 2: Manual begin/commit
+```rust
+let txn = db.begin().await?;
+
+let bridge = channel_bridge::Entity::insert(bridge).exec(&txn).await?;
+let bot = bots::Entity::insert(bot).exec(&txn).await?;
+
+txn.commit().await?; // Or drop for rollback
+```
+
+**Note**: All SeaORM operations accept both `&DbConn` and `&DatabaseTransaction`.
+
+## Query Patterns
+
+### Basic Queries
+```rust
+// Find one
+let bot = bots::Entity::find_by_id(bot_id).one(&db).await?;
+
+// Find with filters (use COLUMN, not Column)
+let bots = bots::Entity::find()
+    .filter(bots::COLUMN.realm_id.eq(realm_id))
+    .filter(bots::COLUMN.name.eq("my-bot"))
+    .all(&db)
+    .await?;
+
+// Find with relations
+let bot = bots::Entity::find()
+    .find_also_related(channel_bridge::Entity)
+    .one(&db)
+    .await?;
+```
+
+### Pagination
+```rust
+let mut paginator = bots::Entity::find()
+    .filter(bots::COLUMN.realm_id.eq(realm_id))
+    .paginate(&db, 10);
+
+let page = paginator.fetch_page(0).await?;
+let num_pages = paginator.num_pages().await?;
+```
+
+## ActiveModel Patterns
+
+### Creating ActiveModel
+```rust
+// Pattern 1: Direct struct initialization
+let bot = bots::ActiveModel {
+    id: Set(Uuid::now_v7()),
+    name: Set("my-bot".to_string()),
+    display_name: Set("My Bot".to_string()),
+    ..Default::default()
+};
+
+// Pattern 2: From Model
+let model: bots::Model = /* ... */;
+let active: bots::ActiveModel = model.into();
+
+// Pattern 3: From JSON (v2 improved)
+let active = bots::ActiveModel::from_json(json!({
+    "name": "my-bot",
+    // id can be omitted - will be NotSet
+}))?;
+```
+
+### ActiveValue States
+- `Set(value)`: Field has a value (will be included in INSERT/UPDATE)
+- `NotSet`: Field not specified (omitted from query)
+- `Unchanged(value)`: Field unchanged from original (for updates)
+
+## Nested ActiveModel (v2 New - ActiveModelEx)
+
+Cascade operations with nested models:
+
+```rust
+let user = user::ActiveModel::builder()
+    .set_name("Bob")
+    .set_email("bob@example.com")
+    .set_profile(profile::ActiveModel::builder().set_picture("image.jpg"))
+    .add_post(
+        post::ActiveModel::builder()
+            .set_title("Nice weather")
+            .add_tag(tag::ActiveModel::builder().set_tag("sunny")),
+    )
+    .save(db)
+    .await?;
+```
+
+**Note**: Requires `DeriveActiveModelEx` on Model struct.
+
+## Error Handling
+
+### New Error Variants (v2)
+- `DbErr::BackendNotSupported`: Operation not supported by database backend
+- `DbErr::PrimaryKeyNotSet`: Primary key required but not set
+- `DbErr::AccessDenied`: RBAC permission denied
+
+### Non-panicking APIs
+```rust
+// v2: try_set instead of set (non-panicking)
+active_model.try_set(column, value)?;
+
+// v2: from_json returns Result (no panic on missing fields)
+let active = ActiveModel::from_json(json)?;
+```
+
+## RBAC (Role-Based Access Control) - v2 New
+
+```rust
+// Load RBAC rules from database
+db.load_rbac().await?;
+
+// Create restricted connection for user
+let restricted_db = db.restricted_for(user_id)?;
+
+// All queries are automatically audited
+let bots = bots::Entity::find().all(&restricted_db).await?;
+// Returns DbErr::AccessDenied if user lacks permission
+```
+
+## Insert Many (v2 Overhauled)
+
+```rust
+// v2: Returns InsertManyResult with Option<last_insert_id>
+let res = bots::Entity::insert_many([
+    bots::ActiveModel { name: Set("bot1".to_string()), ..Default::default() },
+    bots::ActiveModel { name: Set("bot2".to_string()), ..Default::default() },
+])
+.exec(&db)
+.await?;
+
+assert_eq!(res.last_insert_id, Some(bot2_id)); // Option in v2
+
+// Empty iterator returns None (no panic)
+let res = bots::Entity::insert_many([]).exec(&db).await?;
+assert_eq!(res.last_insert_id, None);
+```
+
+## Column Filtering
+
+### Use COLUMN for type safety
+```rust
+// ✅ Correct (v2)
+bots::Entity::find()
+    .filter(bots::COLUMN.name.contains("test"))
+    .filter(bots::COLUMN.is_active.eq(true))
+
+// ❌ Old (v1) - still works but less type-safe
+bots::Entity::find()
+    .filter(bots::Column::Name.contains("test"))
+```
+
+### New Column Methods (v2)
+```rust
+// eq_any for Postgres ANY operator
+.filter(bots::COLUMN.id.eq_any(vec![1, 2, 3]))
+
+// avg, sum, min, max, count
+.select_only()
+.column_as(bots::COLUMN.price.avg(), "avg_price")
+```
+
+## ConnectionTrait API Changes (v2)
+
+### execute, query_one, query_all now take SeaQuery statements
+```rust
+// v1 (old)
+let query: SelectStatement = Entity::find().into_query();
+let stmt = backend.build(&query);
+let rows = db.query_all(stmt).await?;
+
+// v2 (new)
+let query: SelectStatement = Entity::find().into_query();
+let rows = db.query_all(&query).await?; // Direct SeaQuery statement
+```
+
+## Migration Notes from v1
+
+1. **Entity Format**: Use `#[sea_orm::model]` and dense format
+2. **Columns**: Replace `Column::Name` with `COLUMN.name` (camelCase)
+3. **Insert**: `last_insert_id` is now `Option<Value>` instead of `Value`
+4. **Transactions**: Prefer closure-based `db.transaction()` pattern
+5. **Errors**: Use `try_set` instead of `set` for non-panicking code
+6. **ExprTrait**: Add `use sea_orm::ExprTrait;` if using SeaQuery expressions
+7. **from_json**: Now returns `Result` and handles missing fields gracefully
+
+## Best Practices
+
+1. **Always use transactions** for multi-record operations (bot + bridges)
+2. **Use `Entity::insert().exec()`** for explicit control over insert results
+3. **Use `COLUMN`** for compile-time type safety
+4. **Handle `Option<last_insert_id>`** - it's `None` for empty inserts
+5. **Use `try_set`** in library code to avoid panics
+6. **Prefer closure-based transactions** for automatic rollback
+7. **Use `find_also_related`** for 1-1 relations, `find_with_related` for 1-N
+
+## Common Patterns
+
+### Create with Related Records (Transaction)
+```rust
+db.transaction::<_, _, DbErr>(|txn| {
+    Box::pin(async move {
+        // Create bridge first
+        let bridge_res = channel_bridge::Entity::insert(bridge).exec(txn).await?;
+        let bridge_id = bridge_res.last_insert_id.unwrap();
+
+        // Create bot with bridge ID
+        let mut bot = bots::ActiveModel {
+            api_channel_bridge_id: Set(Some(bridge_id)),
+            ..Default::default()
+        };
+        let bot_res = bots::Entity::insert(bot).exec(txn).await?;
+        
+        Ok(bot_res.last_insert_id)
+    })
+})
+.await?;
+```
+
+### Update with Validation
+```rust
+// Check uniqueness before update
+let existing = bots::Entity::find()
+    .filter(bots::COLUMN.realm_id.eq(realm_id))
+    .filter(bots::COLUMN.name.eq(&new_name))
+    .filter(bots::COLUMN.id.ne(bot_id)) // Exclude current bot
+    .one(&db)
+    .await?;
+
+if existing.is_some() {
+    return Err(DbErr::Custom("Name already exists".to_string()));
+}
+
+// Update
+let mut bot: bots::ActiveModel = existing_bot.into();
+bot.name = Set(new_name);
+bot.update(&db).await?;
+```
+
+## References
+
+- SeaORM 2.0 Blog Posts: https://www.sea-ql.org/blog/
+- Examples: `learn-projects/sea-orm/examples/`
+- Tests: `learn-projects/sea-orm/tests/`
+- CHANGELOG: `learn-projects/sea-orm/CHANGELOG.md`
