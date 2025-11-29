@@ -1580,7 +1580,6 @@ enum Realms {
     DisplayName,
     Description,
     IsActive,
-    CreatedBy,
     CreatedAt,
     UpdatedAt,
     Metadata,
