@@ -27,11 +27,11 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Install frontend dependencies in `typescript-workspace/apps/web/package.json`: `@refinedev/core`, `@refinedev/antd`, `@refinedev/react-router`, `graphql-request`, `graphql-tag`, `antd`, `@xuhaojun/refine-postgraphile`
-- [ ] T002 [P] Install codegen dependencies in `typescript-workspace/apps/web/package.json`: `@graphql-codegen/cli`, `@graphql-codegen/typescript`, `@graphql-codegen/typescript-operations`, `@graphql-codegen/import-types-preset`, `graphql-config`
-- [ ] T003 [P] Create directory structure: `typescript-workspace/apps/web/app/admin/bot/`, `typescript-workspace/apps/web/hooks/bot/`, `typescript-workspace/apps/web/components/bot/`, `typescript-workspace/apps/web/lib/graphql/`
-- [ ] T004 [P] Configure GraphQL codegen in `typescript-workspace/apps/web/graphql.config.ts` with schema endpoint, document scanning, and two-file generation (schema.types.ts and types.ts)
-- [ ] T005 Add codegen scripts to `typescript-workspace/apps/web/package.json`: `"codegen": "graphql-codegen"` and `"codegen:watch": "graphql-codegen --watch"`
+- [x] T001 Install frontend dependencies in `typescript-workspace/apps/web/package.json`: `@refinedev/core`, `@refinedev/antd`, `@refinedev/react-router`, `graphql-request`, `graphql-tag`, `antd`, `@xuhaojun/refine-postgraphile`
+- [x] T002 [P] Install codegen dependencies in `typescript-workspace/apps/web/package.json`: `@graphql-codegen/cli`, `@graphql-codegen/typescript`, `@graphql-codegen/typescript-operations`, `@graphql-codegen/import-types-preset`, `graphql-config`
+- [x] T003 [P] Create directory structure: `typescript-workspace/apps/web/app/admin/bot/`, `typescript-workspace/apps/web/hooks/bot/`, `typescript-workspace/apps/web/components/bot/`, `typescript-workspace/apps/web/lib/graphql/`
+- [x] T004 [P] Configure GraphQL codegen in `typescript-workspace/apps/web/graphql.config.ts` with schema endpoint, document scanning, and two-file generation (schema.types.ts and types.ts)
+- [x] T005 Add codegen scripts to `typescript-workspace/apps/web/package.json`: `"codegen": "graphql-codegen"` and `"codegen:watch": "graphql-codegen --watch"`
 
 ---
 
@@ -41,9 +41,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 Create GraphQL client with auth in `typescript-workspace/apps/web/lib/graphql/client.ts` using request middleware to inject Authorization header from authFetch
-- [ ] T007 [P] Create PostGraphile data provider wrapper in `typescript-workspace/apps/web/lib/refine/postgraphile-data-provider.ts` implementing only `getList` and `getOne` methods
-- [ ] T008 [P] Create GraphQL query definitions in `typescript-workspace/apps/web/hooks/bot/use-bot-queries.ts` with `BOTS_QUERY` and `BOT_QUERY` using `gql` from `graphql-tag`
+- [x] T006 Create GraphQL client with auth in `typescript-workspace/apps/web/lib/graphql/client.ts` using request middleware to inject Authorization header from authFetch
+- [x] T007 [P] Create PostGraphile data provider wrapper in `typescript-workspace/apps/web/lib/refine/postgraphile-data-provider.ts` implementing only `getList` and `getOne` methods
+- [x] T008 [P] Create GraphQL query definitions in `typescript-workspace/apps/web/hooks/bot/use-bot-queries.ts` with `BOTS_QUERY` and `BOT_QUERY` using `gql` from `graphql-tag`
 - [ ] T009 Run `pnpm codegen` to generate TypeScript types in `typescript-workspace/apps/web/lib/graphql/schema.types.ts` and `typescript-workspace/apps/web/lib/graphql/types.ts`
 - [ ] T010 Verify PostGraphile server is running and accessible at configured GraphQL endpoint
 
@@ -59,17 +59,17 @@
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Create bot list page component in `typescript-workspace/apps/web/app/admin/bot/page.tsx` using Refine `List` component with Ant Design `Table`
-- [ ] T012 [US1] Create Refine hook for bot list in `typescript-workspace/apps/web/hooks/bot/use-bot-list.ts` using `useTable` from `@refinedev/antd` with PostGraphile data provider
-- [ ] T013 [US1] Configure Refine provider in `typescript-workspace/apps/web/app/admin/bot/layout.tsx` or parent layout with PostGraphile data provider and bots resource
-- [ ] T014 [US1] Implement Ant Design table columns in `typescript-workspace/apps/web/app/admin/bot/page.tsx` for display name, status (with visual distinction), and creation date
-- [ ] T015 [US1] Add empty state component in `typescript-workspace/apps/web/app/admin/bot/page.tsx` showing message when no bots exist
-- [ ] T016 [US1] Implement loading overlay in `typescript-workspace/apps/web/app/admin/bot/page.tsx` that shows over previous content during data fetch/refresh
-- [ ] T017 [US1] Add pagination support using Refine's pagination with PostGraphile connection-based pagination (first/after cursor)
-- [ ] T018 [US1] Implement search functionality in `typescript-workspace/apps/web/app/admin/bot/page.tsx` allowing search by bot name and display name using BotFilter
-- [ ] T019 [US1] Implement filter functionality in `typescript-workspace/apps/web/app/admin/bot/page.tsx` allowing filter by status (active/inactive), realm, and channel bridge using BotFilter
-- [ ] T020 [US1] Create helper function in `typescript-workspace/apps/web/lib/refine/postgraphile-data-provider.ts` to convert Refine filters to PostGraphile BotFilter format
-- [ ] T021 [US1] Create helper function in `typescript-workspace/apps/web/lib/refine/postgraphile-data-provider.ts` to convert Refine sorters to BotOrderBy enum values
+- [x] T011 [US1] Create bot list page component in `typescript-workspace/apps/web/app/admin/bot/page.tsx` using Refine `List` component with Ant Design `Table`
+- [x] T012 [US1] Create Refine hook for bot list in `typescript-workspace/apps/web/hooks/bot/use-bot-list.ts` using `useTable` from `@refinedev/antd` with PostGraphile data provider
+- [x] T013 [US1] Configure Refine provider in `typescript-workspace/apps/web/app/admin/bot/layout.tsx` or parent layout with PostGraphile data provider and bots resource
+- [x] T014 [US1] Implement Ant Design table columns in `typescript-workspace/apps/web/app/admin/bot/page.tsx` for display name, status (with visual distinction), and creation date
+- [x] T015 [US1] Add empty state component in `typescript-workspace/apps/web/app/admin/bot/page.tsx` showing message when no bots exist
+- [x] T016 [US1] Implement loading overlay in `typescript-workspace/apps/web/app/admin/bot/page.tsx` that shows over previous content during data fetch/refresh
+- [x] T017 [US1] Add pagination support using Refine's pagination with PostGraphile connection-based pagination (first/after cursor)
+- [x] T018 [US1] Implement search functionality in `typescript-workspace/apps/web/app/admin/bot/page.tsx` allowing search by bot name and display name using BotFilter
+- [x] T019 [US1] Implement filter functionality in `typescript-workspace/apps/web/app/admin/bot/page.tsx` allowing filter by status (active/inactive), realm, and channel bridge using BotFilter
+- [x] T020 [US1] Create helper function in `typescript-workspace/apps/web/lib/refine/postgraphile-data-provider.ts` to convert Refine filters to PostGraphile BotFilter format (handled by @xuhaojun/refine-postgraphile package)
+- [x] T021 [US1] Create helper function in `typescript-workspace/apps/web/lib/refine/postgraphile-data-provider.ts` to convert Refine sorters to BotOrderBy enum values (handled by @xuhaojun/refine-postgraphile package)
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently. Users can view bot list with search, filter, and pagination.
 

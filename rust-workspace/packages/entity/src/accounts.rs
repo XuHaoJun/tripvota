@@ -23,8 +23,6 @@ pub struct Model {
     pub last_login_at: Option<DateTimeWithTimeZone>,
     #[sea_orm(column_type = "JsonBinary", nullable)]
     pub metadata: Option<Json>,
-    #[sea_orm(has_many)]
-    pub realms: HasMany<super::realms::Entity>,
     #[sea_orm(has_many, via = "federated_identities")]
     pub identity_providers: HasMany<super::identity_providers::Entity>,
 }
