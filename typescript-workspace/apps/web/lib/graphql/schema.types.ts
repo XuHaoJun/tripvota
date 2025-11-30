@@ -16,6 +16,7 @@ export type Scalars = {
   Cursor: { input: any; output: any };
   Date: { input: any; output: any };
   Datetime: { input: any; output: any };
+  GeoJSON: { input: any; output: any };
   JSON: { input: any; output: any };
   UUID: { input: any; output: any };
 };
@@ -2346,6 +2347,35 @@ export type FederatedIdentityPatch = {
   metadata?: InputMaybe<Scalars['JSON']['input']>;
   refreshToken?: InputMaybe<Scalars['String']['input']>;
   tokenExpiry?: InputMaybe<Scalars['Datetime']['input']>;
+};
+
+/** Represents a Point geometry. */
+export type GeographyPoint = GeometryInterface &
+  GeometryXyInterface & {
+    /** Converts the object to GeoJSON format as specified by RFC 7946. */
+    geojson: Scalars['GeoJSON']['output'];
+    /** Spatial Reference System Identifier (SRID). */
+    srid: Scalars['Int']['output'];
+    /** The x coordinate of this Point geometry. */
+    x: Scalars['Float']['output'];
+    /** The y coordinate of this Point geometry. */
+    y: Scalars['Float']['output'];
+  };
+
+/** Base interface for all PostGIS geometry types. All geometry types implement this interface. */
+export type GeometryInterface = {
+  /** Converts the object to GeoJSON format as specified by RFC 7946. */
+  geojson: Scalars['GeoJSON']['output'];
+  /** Spatial Reference System Identifier (SRID). */
+  srid: Scalars['Int']['output'];
+};
+
+/** All geometry XY types implement this interface. */
+export type GeometryXyInterface = {
+  /** Converts the object to GeoJSON format as specified by RFC 7946. */
+  geojson: Scalars['GeoJSON']['output'];
+  /** Spatial Reference System Identifier (SRID). */
+  srid: Scalars['Int']['output'];
 };
 
 export type IdentityProvider = Node & {
@@ -4869,6 +4899,7 @@ export type TripCard = Node & {
   /** A globally unique identifier. Can be used in various places throughout the system to identify this single value. */
   id: Scalars['ID']['output'];
   metadata?: Maybe<Scalars['JSON']['output']>;
+  position?: Maybe<GeographyPoint>;
   /** Reads a single `Profile` that is related to this `TripCard`. */
   profile?: Maybe<Profile>;
   rowId: Scalars['UUID']['output'];
@@ -4976,6 +5007,7 @@ export type TripCardInput = {
   displayOrder?: InputMaybe<Scalars['Int']['input']>;
   endTime?: InputMaybe<Scalars['Datetime']['input']>;
   metadata?: InputMaybe<Scalars['JSON']['input']>;
+  position?: InputMaybe<Scalars['GeoJSON']['input']>;
   rowId?: InputMaybe<Scalars['UUID']['input']>;
   startTime?: InputMaybe<Scalars['Datetime']['input']>;
   status?: InputMaybe<Scalars['String']['input']>;
@@ -5011,6 +5043,7 @@ export type TripCardPatch = {
   displayOrder?: InputMaybe<Scalars['Int']['input']>;
   endTime?: InputMaybe<Scalars['Datetime']['input']>;
   metadata?: InputMaybe<Scalars['JSON']['input']>;
+  position?: InputMaybe<Scalars['GeoJSON']['input']>;
   rowId?: InputMaybe<Scalars['UUID']['input']>;
   startTime?: InputMaybe<Scalars['Datetime']['input']>;
   status?: InputMaybe<Scalars['String']['input']>;

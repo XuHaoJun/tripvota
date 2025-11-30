@@ -41,6 +41,9 @@ importers:
       '@types/cors':
         specifier: ^2.8.19
         version: 2.8.19
+      '@xuhaojun/graphile-postgis':
+        specifier: ^0.1.0
+        version: 0.1.0(15e8c2be7d91497fa1b9da18d1e61415)
       cors:
         specifier: ^2.8.5
         version: 2.8.5
@@ -2504,6 +2507,17 @@ packages:
   '@whatwg-node/promise-helpers@1.3.2':
     resolution: {integrity: sha512-Nst5JdK47VIl9UcGwtv2Rcgyn5lWtZ0/mhRQ4G8NN2isxpq2TO30iqHzmwoJycjWuyUfg3GFXqP/gFHXeV57IA==}
     engines: {node: '>=16.0.0'}
+
+  '@xuhaojun/graphile-postgis@0.1.0':
+    resolution: {integrity: sha512-zczKs1xz/C3+TOC8keHGTOQqh91fbzs66C/ifJMOCSqUdkL1S4cP3yts+6KzXyiMi021l8MzZ8ZjFh8zD1bDxw==}
+    peerDependencies:
+      '@dataplan/pg': ^1.0.0-rc
+      grafast: ^1.0.0-rc
+      graphile-build: ^5.0.0-rc
+      graphile-build-pg: ^5.0.0-rc
+      graphql: ^16.9.0
+      pg-sql2: ^5.0.0-rc
+      postgraphile: ^5.0.0-rc
 
   '@xuhaojun/refine-postgraphile@1.0.4':
     resolution: {integrity: sha512-eijx0QSFXxlpK2U9jG6IfDTYp6Iv3K5KTMWM/7cnVXs11uVAkMoOz3eI7Svj2XqY7PRLUsA5qNmoah1nPzRqcA==}
@@ -8507,6 +8521,20 @@ snapshots:
   '@whatwg-node/promise-helpers@1.3.2':
     dependencies:
       tslib: 2.8.1
+
+  '@xuhaojun/graphile-postgis@0.1.0(15e8c2be7d91497fa1b9da18d1e61415)':
+    dependencies:
+      '@dataplan/pg': 1.0.0-rc.2(@dataplan/json@1.0.0-rc.2(grafast@1.0.0-rc.3(@envelop/core@5.4.0)(graphql@16.12.0)))(grafast@1.0.0-rc.3(@envelop/core@5.4.0)(graphql@16.12.0))(graphile-config@1.0.0-rc.2)(graphql@16.12.0)(pg-sql2@5.0.0-rc.2)(pg@8.16.3)
+      debug: 4.4.3
+      grafast: 1.0.0-rc.3(@envelop/core@5.4.0)(graphql@16.12.0)
+      graphile-build: 5.0.0-rc.2(grafast@1.0.0-rc.3(@envelop/core@5.4.0)(graphql@16.12.0))(graphile-config@1.0.0-rc.2)(graphql@16.12.0)
+      graphile-build-pg: 5.0.0-rc.2(@dataplan/pg@1.0.0-rc.2(@dataplan/json@1.0.0-rc.2(grafast@1.0.0-rc.3(@envelop/core@5.4.0)(graphql@16.12.0)))(grafast@1.0.0-rc.3(@envelop/core@5.4.0)(graphql@16.12.0))(graphile-config@1.0.0-rc.2)(graphql@16.12.0)(pg-sql2@5.0.0-rc.2)(pg@8.16.3))(grafast@1.0.0-rc.3(@envelop/core@5.4.0)(graphql@16.12.0))(graphile-build@5.0.0-rc.2(grafast@1.0.0-rc.3(@envelop/core@5.4.0)(graphql@16.12.0))(graphile-config@1.0.0-rc.2)(graphql@16.12.0))(graphile-config@1.0.0-rc.2)(graphql@16.12.0)(pg-sql2@5.0.0-rc.2)(pg@8.16.3)(tamedevil@0.1.0-rc.2)
+      graphql: 16.12.0
+      pg-sql2: 5.0.0-rc.2
+      postgraphile: 5.0.0-rc.3(7638a3a95158932d93fdb449abf85b2f)
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
 
   '@xuhaojun/refine-postgraphile@1.0.4(@refinedev/core@5.0.6(@tanstack/react-query@5.90.10(react@19.2.0))(@types/react-dom@19.2.3(@types/react@19.2.6))(@types/react@19.2.6)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(gql-query-builder@3.8.0)(graphql-request@5.2.0(graphql@16.12.0))(graphql-ws@5.16.2(graphql@16.12.0))':
     dependencies:
